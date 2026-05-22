@@ -4,12 +4,17 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "vitest run"
   },
   "dependencies": {
-    "@chatter/shared": "workspace:*"
+    "express": "^4.19.0"
   },
   "devDependencies": {
+    "@chatter/shared": "workspace:*",
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   }
