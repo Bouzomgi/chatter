@@ -15,6 +15,22 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ACTIVE=$(cat "$DIR/active_color")
 INACTIVE=$([ "$ACTIVE" = "red" ] && echo "black" || echo "red")
 
+# Cold start: if no containers are running yet, bring up the full stack and exit.
+# This handles the first-run case after a fresh clone or Pi reboot.
+# State files are now bootstrapped above, so Docker won't create directories in
+# place of the missing bind-mounted files.
+cd "$(dirname "$DIR")"
+if [ -z "$(docker compose ps -q 2>/dev/null)" ]; then
+    echo "==> Cold start: bringing up stack on $ACTIVE"
+    if [ "$ACTIVE" = "black" ]; then
+        docker compose --profile black up -d
+    else
+        docker compose up -d
+    fi
+    echo "==> Stack is up on $ACTIVE. Run deploy.sh again to do a zero-downtime deploy."
+    exit 0
+fi
+
 echo "==> Deploying to $INACTIVE (currently active: $ACTIVE)"
 
 # Pull latest image from registry; no-op if image is local-only (e.g. local dev)
