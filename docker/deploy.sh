@@ -61,6 +61,19 @@ for i in $(seq 1 30); do
 done
 echo "==> $INACTIVE is healthy"
 
+# Optional pre-swap hook — run E2E or smoke tests against the inactive slot
+# before it takes live traffic. Set DEPLOY_HOOK to a shell command; the
+# inactive slot is reachable at its dedicated host port (red=3001, black=3002).
+if [ -n "${DEPLOY_HOOK:-}" ]; then
+    INACTIVE_PORT=$([ "$INACTIVE" = "red" ] && echo "3001" || echo "3002")
+    echo "==> Running deploy hook against $INACTIVE (http://localhost:$INACTIVE_PORT)"
+    PLAYWRIGHT_BASE_URL="http://localhost:$INACTIVE_PORT" eval "$DEPLOY_HOOK" || {
+        echo "ERROR: deploy hook failed — aborting, $INACTIVE not promoted" >&2
+        docker compose stop "$INACTIVE"
+        exit 1
+    }
+fi
+
 # Record new active color before reloading nginx so both files stay in sync
 # even if the process is killed between the two writes.
 echo "$INACTIVE" > "$DIR/active_color"
