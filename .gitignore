@@ -1,4 +1,6 @@
 node_modules/
+docker/active_color
+docker/nginx/upstream.conf
 dist/
 .env
 .env.*
