@@ -84,6 +84,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+      prisma:
+        specifier: ^5
+        version: 5.22.0
     devDependencies:
       '@chatter/shared':
         specifier: workspace:*
@@ -106,9 +109,6 @@ importers:
       '@types/supertest':
         specifier: ^7.2.0
         version: 7.2.0
-      prisma:
-        specifier: ^5
-        version: 5.22.0
       supertest:
         specifier: ^7.2.2
         version: 7.2.2

@@ -22,8 +22,10 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/server/package.json packages/server/
 RUN pnpm install --frozen-lockfile --filter @chatter/server --prod
 COPY --from=builder /app/packages/server/dist packages/server/dist
+COPY packages/server/prisma packages/server/prisma
+RUN pnpm --filter @chatter/server exec prisma generate
 EXPOSE 3000
-CMD ["node", "packages/server/dist/index.js"]
+CMD ["sh", "-c", "pnpm --filter @chatter/server exec prisma migrate deploy && node packages/server/dist/index.js"]
 
 # --- Client production stage ---
 FROM nginx:alpine AS client-production
