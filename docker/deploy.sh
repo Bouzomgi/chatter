@@ -7,8 +7,12 @@ INACTIVE=$([ "$ACTIVE" = "red" ] && echo "black" || echo "red")
 
 echo "==> Deploying to $INACTIVE (currently active: $ACTIVE)"
 
-# Start the inactive color
-docker compose --profile "$INACTIVE" up -d "$INACTIVE"
+# Start the inactive color (black requires its profile; red has none)
+if [ "$INACTIVE" = "black" ]; then
+    docker compose --profile black up -d black
+else
+    docker compose up -d red
+fi
 
 # Wait for healthy (30 × 2s = 60s timeout)
 echo "==> Waiting for $INACTIVE to become healthy..."
