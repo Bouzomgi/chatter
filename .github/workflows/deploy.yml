@@ -35,6 +35,8 @@ jobs:
   e2e:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://chatter:chatter@postgres:5432/chatter
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -43,10 +45,12 @@ jobs:
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
+      - name: Build Docker images from current commit
+        run: docker compose build
       - name: Cold start (bring up red)
-        run: bash docker/deploy.sh
+        run: SKIP_PULL=1 bash docker/deploy.sh
       - name: Deploy to black with E2E gate
-        run: DEPLOY_HOOK="pnpm test:e2e" bash docker/deploy.sh
+        run: SKIP_PULL=1 DEPLOY_HOOK="pnpm test:e2e" bash docker/deploy.sh
       - if: always()
         run: docker compose --profile black down -v
 

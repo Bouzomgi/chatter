@@ -33,8 +33,10 @@ fi
 
 echo "==> Deploying to $INACTIVE (currently active: $ACTIVE)"
 
-# Pull latest image from registry; no-op if image is local-only (e.g. local dev)
-docker compose pull "$INACTIVE" 2>/dev/null || echo "==> No remote image found, using local build"
+# Pull latest image from registry. Set SKIP_PULL=1 to use locally built images (e.g. CI).
+if [ -z "${SKIP_PULL:-}" ]; then
+    docker compose pull "$INACTIVE" 2>/dev/null || echo "==> No remote image found, using local build"
+fi
 
 # Start the inactive color.
 # black has a compose profile so it doesn't start on plain `docker compose up -d`;
