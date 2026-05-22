@@ -28,6 +28,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter server exec prisma generate
       - run: pnpm typecheck
+      - run: pnpm --filter server exec prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://chatter:chatter@localhost:5432/chatter_test
       - run: pnpm test
         env:
           DATABASE_URL: postgresql://chatter:chatter@localhost:5432/chatter_test
