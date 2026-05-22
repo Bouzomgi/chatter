@@ -83,10 +83,8 @@ built afterward ships through the real pipeline automatically.
 
 ## Phase 8 — Users & Conversations (Backend REST)
 
-- `GET /users/search?username=` — find users by username (exclude self)
 - `POST /conversations` — create a new 1-on-1 conversation (idempotent — return existing if already exists)
 - `GET /conversations` — list all conversations for current user with latest message preview
-- `GET /conversations/:id/messages` — paginated message history
 
 ---
 
