@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import authRouter from './auth.js'
-import prisma from '../lib/prisma.js'
 
 process.env.JWT_SECRET = 'test-secret'
 
@@ -12,29 +11,18 @@ app.use(express.json())
 app.use(cookieParser())
 app.use('/auth', authRouter)
 
-beforeEach(async () => {
-  await prisma.message.deleteMany()
-  await prisma.participant.deleteMany()
-  await prisma.conversation.deleteMany()
-  await prisma.user.deleteMany()
-})
-
 describe('POST /auth/register', () => {
-  it('creates a user and sets a cookie', async () => {
+  it('creates a new user and sets a cookie', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ username: 'alice', email: 'alice@example.com', password: 'password123' })
+      .send({ username: 'dave', email: 'dave@example.com', password: 'password123' })
 
     expect(res.status).toBe(201)
-    expect(res.body).toMatchObject({ username: 'alice', email: 'alice@example.com' })
+    expect(res.body).toMatchObject({ username: 'dave', email: 'dave@example.com' })
     expect(res.headers['set-cookie']).toBeDefined()
   })
 
   it('rejects duplicate username', async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ username: 'alice', email: 'alice@example.com', password: 'password123' })
-
     const res = await request(app)
       .post('/auth/register')
       .send({ username: 'alice', email: 'other@example.com', password: 'password123' })
@@ -49,12 +37,6 @@ describe('POST /auth/register', () => {
 })
 
 describe('POST /auth/login', () => {
-  beforeEach(async () => {
-    await request(app)
-      .post('/auth/register')
-      .send({ username: 'alice', email: 'alice@example.com', password: 'password123' })
-  })
-
   it('logs in with correct credentials', async () => {
     const res = await request(app)
       .post('/auth/login')
@@ -92,11 +74,11 @@ describe('POST /auth/logout', () => {
 
 describe('GET /auth/me', () => {
   it('returns the current user when authenticated', async () => {
-    const registerRes = await request(app)
-      .post('/auth/register')
-      .send({ username: 'alice', email: 'alice@example.com', password: 'password123' })
+    const loginRes = await request(app)
+      .post('/auth/login')
+      .send({ email: 'alice@example.com', password: 'password123' })
 
-    const cookie = registerRes.headers['set-cookie'][0]
+    const cookie = loginRes.headers['set-cookie'][0]
 
     const res = await request(app).get('/auth/me').set('Cookie', cookie)
     expect(res.status).toBe(200)

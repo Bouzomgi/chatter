@@ -32,6 +32,9 @@ jobs:
       - run: pnpm --filter server exec prisma migrate deploy
         env:
           DATABASE_URL: postgresql://chatter:chatter@localhost:5432/chatter_test
+      - run: pnpm --filter server run db:seed
+        env:
+          DATABASE_URL: postgresql://chatter:chatter@localhost:5432/chatter_test
       - run: pnpm test
         env:
           DATABASE_URL: postgresql://chatter:chatter@localhost:5432/chatter_test
