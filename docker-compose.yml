@@ -1,5 +1,6 @@
 services:
   nginx:
+    image: ghcr.io/bouzomgi/chatter-nginx:latest
     build:
       context: .
       target: client-production
@@ -12,11 +13,12 @@ services:
         condition: service_healthy
 
   red:
+    image: ghcr.io/bouzomgi/chatter-server:latest
     build:
       context: .
       target: server-production
-    expose:
-      - "3000"
+    ports:
+      - "3001:3000"
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -34,11 +36,12 @@ services:
   # red has no profile because it is the default active slot on fresh deploys.
   # deploy.sh manages which slot is live at any given time.
   black:
+    image: ghcr.io/bouzomgi/chatter-server:latest
     build:
       context: .
       target: server-production
-    expose:
-      - "3000"
+    ports:
+      - "3002:3000"
     environment:
       NODE_ENV: production
       PORT: "3000"
