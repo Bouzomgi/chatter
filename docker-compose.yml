@@ -1,15 +1,17 @@
 services:
-  frontend:
+  nginx:
     build:
       context: .
       target: client-production
     ports:
       - "80:80"
+    volumes:
+      - ./docker/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro
     depends_on:
-      backend:
+      red:
         condition: service_healthy
 
-  backend:
+  red:
     build:
       context: .
       target: server-production
@@ -26,6 +28,26 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  black:
+    build:
+      context: .
+      target: server-production
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - black
 
   postgres:
     image: postgres:16-alpine
