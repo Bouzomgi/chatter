@@ -60,6 +60,9 @@ importers:
       '@playwright/test':
         specifier: ^1.45.0
         version: 1.60.0
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.41
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
