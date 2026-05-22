@@ -20,15 +20,19 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
+      # DATABASE_URL is injected via .env on the host (not committed)
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"] # Alpine: wget, not curl
       interval: 10s
       timeout: 5s
       retries: 3
 
+  # black has a profile so it does not start on plain `docker compose up -d`.
+  # red has no profile because it is the default active slot on fresh deploys.
+  # deploy.sh manages which slot is live at any given time.
   black:
     build:
       context: .
@@ -38,11 +42,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
+      # DATABASE_URL is injected via .env on the host (not committed)
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"] # Alpine: wget, not curl
       interval: 10s
       timeout: 5s
       retries: 3
