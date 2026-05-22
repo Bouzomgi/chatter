@@ -7,6 +7,11 @@ set -euo pipefail
 # upstream.conf as the authority on what nginx is actually serving.
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Bootstrap state files on first run (they are gitignored; defaults to red)
+[ -f "$DIR/active_color" ] || echo "red" > "$DIR/active_color"
+[ -f "$DIR/nginx/upstream.conf" ] || echo "upstream backend { server red:3000; }" > "$DIR/nginx/upstream.conf"
+
 ACTIVE=$(cat "$DIR/active_color")
 INACTIVE=$([ "$ACTIVE" = "red" ] && echo "black" || echo "red")
 
