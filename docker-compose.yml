@@ -22,7 +22,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
-      # DATABASE_URL is injected via .env on the host (not committed)
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,7 +45,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
-      # DATABASE_URL is injected via .env on the host (not committed)
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
