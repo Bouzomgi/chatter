@@ -1,5 +1,9 @@
 # Chatter2
 
+## Development workflow
+
+`main` is a protected branch — all work must be done on a feature branch and merged via PR. Push the branch and open a PR when the work is ready.
+
 A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
 ## Product scope (v1)

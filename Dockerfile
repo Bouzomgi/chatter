@@ -14,14 +14,18 @@ COPY . .
 RUN pnpm --filter @chatter/client build
 RUN pnpm --filter @chatter/server build
 
-# --- Production stage ---
-FROM base AS production
+# --- Server production stage ---
+FROM base AS server-production
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/server/package.json packages/server/
 RUN pnpm install --frozen-lockfile --filter @chatter/server --prod
 COPY --from=builder /app/packages/server/dist packages/server/dist
-COPY --from=builder /app/packages/client/dist packages/client/dist
 EXPOSE 3000
 CMD ["node", "packages/server/dist/index.js"]
+
+# --- Client production stage ---
+FROM nginx:alpine AS client-production
+COPY --from=builder /app/packages/client/dist /usr/share/nginx/html
+COPY docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf
