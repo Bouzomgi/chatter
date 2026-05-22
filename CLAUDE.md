@@ -2,7 +2,9 @@
 
 ## Development workflow
 
-`main` is a protected branch — all work must be done on a feature branch and merged via PR. Push the branch and open a PR when the work is ready.
+`main` is a protected branch — all work must be done on a feature branch and merged via PR.
+
+After implementing a phase or feature: commit the work, push the branch, open a PR, then loop (`/loop`) monitoring CI until all checks pass and all acceptance criteria are satisfied. Fix any failures before stopping.
 
 A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
