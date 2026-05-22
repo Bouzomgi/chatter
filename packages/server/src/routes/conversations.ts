@@ -1,9 +1,10 @@
 import { Router } from 'express'
+import type { Router as ExpressRouter } from 'express'
 import { Server } from 'socket.io'
 import prisma from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 
-export function createConversationsRouter(io: Server) {
+export function createConversationsRouter(io: Server): ExpressRouter {
   const router = Router()
 
   router.post('/', requireAuth, async (req, res) => {

@@ -1,12 +1,12 @@
 import http from 'http'
-import express from 'express'
+import express, { Express } from 'express'
 import cookieParser from 'cookie-parser'
 import { Server } from 'socket.io'
 import authRouter from './routes/auth.js'
 import { createConversationsRouter } from './routes/conversations.js'
 import { registerSocketHandlers } from './socket/index.js'
 
-export function createApp() {
+export function createApp(): { app: Express; httpServer: http.Server; io: Server } {
   const app = express()
 
   app.use(express.json())
