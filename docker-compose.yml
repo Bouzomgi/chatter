@@ -3,9 +3,11 @@ services:
     image: ghcr.io/bouzomgi/chatter-nginx:latest
     build:
       context: .
-      target: client-production
+      target: nginx-production
     ports:
       - "80:80"
+    environment:
+      DEPLOY_SECRET: ${DEPLOY_SECRET:-}
     volumes:
       - ./docker/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro
     depends_on:
@@ -26,6 +28,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEPLOY_SECRET: ${DEPLOY_SECRET:-}
       SEED: "true"
     depends_on:
       postgres:
@@ -53,6 +56,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEPLOY_SECRET: ${DEPLOY_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy

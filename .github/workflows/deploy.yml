@@ -56,8 +56,10 @@ jobs:
         run: docker compose build
       - name: Cold start (bring up red)
         run: SKIP_PULL=1 bash docker/deploy.sh
-      - name: Deploy to black with E2E gate
-        run: SKIP_PULL=1 DEPLOY_HOOK="pnpm test:e2e" bash docker/deploy.sh
+      - name: Run integration tests against red
+        run: pnpm test:e2e
+      - name: Deploy to black with smoke gate
+        run: SKIP_PULL=1 DEPLOY_HOOK="pnpm test:smoke" bash docker/deploy.sh
       - if: always()
         run: docker compose --profile black down -v
 
@@ -90,7 +92,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          target: client-production
+          target: nginx-production
           platforms: linux/arm64
           push: true
           tags: ghcr.io/bouzomgi/chatter-nginx:latest

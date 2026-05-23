@@ -69,7 +69,7 @@ echo "==> $INACTIVE is healthy"
 if [ -n "${DEPLOY_HOOK:-}" ]; then
     INACTIVE_PORT=$([ "$INACTIVE" = "red" ] && echo "3001" || echo "3002")
     echo "==> Running deploy hook against $INACTIVE (http://localhost:$INACTIVE_PORT)"
-    PLAYWRIGHT_BASE_URL="http://localhost:$INACTIVE_PORT" eval "$DEPLOY_HOOK" || {
+    PLAYWRIGHT_BASE_URL="http://localhost:$INACTIVE_PORT" SMOKE_BASE_URL="http://localhost:$INACTIVE_PORT" eval "$DEPLOY_HOOK" || {
         echo "ERROR: deploy hook failed — aborting, $INACTIVE not promoted" >&2
         docker compose stop "$INACTIVE"
         exit 1

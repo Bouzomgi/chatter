@@ -22,12 +22,16 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/server/package.json packages/server/
 RUN pnpm install --frozen-lockfile --filter @chatter/server --prod
 COPY --from=builder /app/packages/server/dist packages/server/dist
+COPY --from=builder /app/packages/client/dist packages/client/dist
 COPY packages/server/prisma packages/server/prisma
 RUN pnpm --filter @chatter/server exec prisma generate
 EXPOSE 3000
 CMD ["sh", "-c", "pnpm --filter @chatter/server exec prisma migrate deploy && if [ \"$SEED\" = \"true\" ]; then node packages/server/dist/seed.js; fi && node packages/server/dist/index.js"]
 
-# --- Client production stage ---
-FROM nginx:alpine AS client-production
-COPY --from=builder /app/packages/client/dist /usr/share/nginx/html
-COPY docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+# --- Nginx production stage ---
+FROM nginx:alpine AS nginx-production
+COPY docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
+COPY docker/nginx/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

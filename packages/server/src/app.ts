@@ -1,4 +1,6 @@
 import http from 'http'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import express, { Express } from 'express'
 import cookieParser from 'cookie-parser'
 import { Server } from 'socket.io'
@@ -17,6 +19,16 @@ export function createApp(): { app: Express; httpServer: http.Server; io: Server
     res.json({ status: 'ok' })
   })
 
+  if (process.env.DEPLOY_SECRET) {
+    app.use((req, res, next) => {
+      if (req.headers['x-deploy-secret'] !== process.env.DEPLOY_SECRET) {
+        res.sendStatus(403)
+        return
+      }
+      next()
+    })
+  }
+
   app.use('/auth', authRouter)
 
   const httpServer = http.createServer(app)
@@ -26,6 +38,13 @@ export function createApp(): { app: Express; httpServer: http.Server; io: Server
   app.use('/users', usersRouter)
 
   registerSocketHandlers(io)
+
+  if (process.env.NODE_ENV === 'production') {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const clientDist = path.resolve(__dirname, '../../client/dist')
+    app.use(express.static(clientDist))
+    app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')))
+  }
 
   return { app, httpServer, io }
 }
