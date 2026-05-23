@@ -24,6 +24,7 @@ services:
       PORT: "3000"
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
+      SEED: "true"
     depends_on:
       postgres:
         condition: service_healthy
