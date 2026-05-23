@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import express from 'express'
+import http from 'http'
 import cookieParser from 'cookie-parser'
+import { Server } from 'socket.io'
 import authRouter from './auth.js'
-import conversationsRouter from './conversations.js'
+import { createConversationsRouter } from './conversations.js'
 
 process.env.JWT_SECRET = 'test-secret'
 
@@ -11,7 +13,10 @@ const app = express()
 app.use(express.json())
 app.use(cookieParser())
 app.use('/auth', authRouter)
-app.use('/conversations', conversationsRouter)
+
+const httpServer = http.createServer(app)
+const io = new Server(httpServer)
+app.use('/conversations', createConversationsRouter(io))
 
 async function loginAs(email: string) {
   const res = await request(app)
@@ -117,9 +122,12 @@ describe('GET /conversations', () => {
     const alice = await loginAs('alice@example.com')
     const res = await request(app).get('/conversations').set('Cookie', alice.cookie)
 
-    // alice-carol convo has the most recent message (Jan 2), alice-bob is Jan 1
-    const usernames = res.body.map((c: { otherUser: { username: string } }) => c.otherUser.username)
-    expect(usernames.indexOf('carol')).toBeLessThan(usernames.indexOf('bob'))
+    const times = res.body.map((c: { latestMessage?: { createdAt: string }; createdAt: string }) =>
+      new Date(c.latestMessage?.createdAt ?? c.createdAt).getTime(),
+    )
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i]).toBeLessThanOrEqual(times[i - 1])
+    }
   })
 
   it('includes latest message preview', async () => {
@@ -133,7 +141,6 @@ describe('GET /conversations', () => {
   })
 
   it('returns empty array for user with no conversations', async () => {
-    // Register a fresh user
     const unique = Date.now().toString()
     await request(app)
       .post('/auth/register')
@@ -148,5 +155,83 @@ describe('GET /conversations', () => {
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual([])
+  })
+})
+
+describe('POST /conversations/:id/messages', () => {
+  it('requires auth', async () => {
+    const res = await request(app).post('/conversations/fake-id/messages').send({ body: 'hi' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 for unknown conversation', async () => {
+    const alice = await loginAs('alice@example.com')
+    const res = await request(app)
+      .post('/conversations/nonexistent-id/messages')
+      .set('Cookie', alice.cookie)
+      .send({ body: 'hi' })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 403 when user is not a participant', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+    const carol = await loginAs('carol@example.com')
+
+    // Get bob-carol conversation id (bob creates it)
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', bob.cookie)
+      .send({ targetUserId: carol.user.id })
+    const conversationId = convoRes.body.id
+
+    // Alice is not in bob-carol convo
+    const res = await request(app)
+      .post(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+      .send({ body: 'sneaky' })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 400 for missing body', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', alice.cookie)
+      .send({ targetUserId: bob.user.id })
+    const conversationId = convoRes.body.id
+
+    const res = await request(app)
+      .post(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+      .send({})
+    expect(res.status).toBe(400)
+  })
+
+  it('creates and returns the message', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', alice.cookie)
+      .send({ targetUserId: bob.user.id })
+    const conversationId = convoRes.body.id
+
+    const res = await request(app)
+      .post(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+      .send({ body: 'Hello Bob!' })
+
+    expect(res.status).toBe(201)
+    expect(res.body).toMatchObject({
+      conversationId,
+      senderId: alice.user.id,
+      body: 'Hello Bob!',
+    })
+    expect(res.body.id).toBeDefined()
+    expect(res.body.createdAt).toBeDefined()
   })
 })
