@@ -2,6 +2,7 @@ import { useEffect, useReducer } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { api } from '../lib/api.js'
+import { socket } from '../lib/socket.js'
 import Sidebar from '../components/chat/Sidebar.js'
 import MessageThread from '../components/chat/MessageThread.js'
 import MessageInput from '../components/chat/MessageInput.js'
@@ -79,6 +80,16 @@ export default function Chat() {
     api.get('/conversations')
       .then(r => r.json())
       .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
+
+    socket.connect()
+    socket.on('message:new', (message: Message) => {
+      dispatch({ type: 'APPEND_MESSAGE', message })
+    })
+
+    return () => {
+      socket.off('message:new')
+      socket.disconnect()
+    }
   }, [])
 
   async function selectConversation(id: string) {
