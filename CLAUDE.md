@@ -4,7 +4,12 @@
 
 `main` is a protected branch — all work must be done on a feature branch and merged via PR.
 
-After implementing a feature: commit the work, push the branch, open a PR, then loop (`/loop`) monitoring CI until all checks pass. After every push (including fixes), re-check `gh pr checks <n>` to confirm the new run passes. Before declaring a PR ready, validate every item in the PR test plan by running the Playwright E2E tests against the app (`PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test`). Check off each passing item in the PR description using `gh pr edit`. Fix any failures before stopping.
+After implementing a feature, follow this loop until the PR is fully ready:
+1. Commit, push, open a PR.
+2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes.
+3. Validate **every** item in the PR test plan: run Playwright E2E tests (`PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test`) and any manual checks that require a running app. For UI checks, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`).
+4. Check off each passing item in the PR description with `gh pr edit`.
+5. If anything fails, fix it, push, and restart the loop from step 2.
 
 Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow. Tests run against the full Docker Compose stack; seeded users are alice/bob/carol with password `password123`.
 
