@@ -1,21 +1,22 @@
-# Chatter2
+# Chatter
+
+A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
 ## Development workflow
 
 `main` is a protected branch — all work must be done on a feature branch and merged via PR.
 
 After implementing a feature, follow this loop until the PR is fully ready:
+
 1. Commit, push, open a PR.
 2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes.
-3. Validate **every** item in the PR test plan: run Playwright E2E tests (`PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test`) and any manual checks that require a running app. For UI checks, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`).
+3. Validate **every** item in the PR test plan: perform any manual UI checks that require a running app. For UI checks, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`). E2E tests are run automatically by CI — do not re-run them locally.
 4. Check off each passing item in the PR description with `gh pr edit`.
 5. If anything fails, fix it, push, and restart the loop from step 2.
 
 Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow.
 
 E2E tests run against production — they must never create or delete data. Use the always-provisioned admin account (`admin@admin.local`, password from `ADMIN_PASSWORD` env var, default `admin123`) wherever a logged-in user is needed. Do not rely on seeded users (alice/bob/carol) — they only exist in local/dev environments.
-
-A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
 ## Product scope (v1)
 
@@ -38,27 +39,6 @@ PostgreSQL
 ```
 
 Real-time flow: client joins a Socket.io room keyed by `conversation_id`. Messages are HTTP POST'd to persist first, then the server emits to the room. On reconnect, the client fetches missed messages via REST.
-
-## Stack
-
-| Layer | Choice |
-|---|---|
-| Frontend | React + TypeScript + Vite |
-| Styling | Tailwind CSS |
-| Backend | Node.js + TypeScript + Express |
-| Real-time | Socket.io |
-| Database | PostgreSQL |
-| ORM | Prisma |
-| Auth | JWT (httpOnly cookies) + bcrypt |
-
-## Data model
-
-```
-User         — id, username, email, password_hash, created_at
-Conversation — id, created_at
-Participant  — conversation_id, user_id  (2 rows per 1-on-1 chat)
-Message      — id, conversation_id, sender_id, body, created_at
-```
 
 ## Repository structure
 
@@ -94,6 +74,7 @@ Internet → Cloudflare Tunnel → Nginx → [Red | Black] Node.js → Postgres
 ```
 
 Nginx holds the traffic switch. Deploy script logic (runs on Pi):
+
 1. Pull new image from ghcr.io
 2. Detect inactive color
 3. Start inactive color with new image, wait for health check
@@ -109,9 +90,3 @@ git push main
   → push to GitHub Container Registry (ghcr.io, free)
   → SSH into Pi → run deploy.sh
 ```
-
-Note: ARM64 cross-compilation via QEMU on GitHub's x86 runners is slow (~5-10 min for a Node build). Acceptable tradeoff for keeping CI free and hardware-independent.
-
-### Cost
-
-~$1-2/month electricity. No cloud compute costs.
