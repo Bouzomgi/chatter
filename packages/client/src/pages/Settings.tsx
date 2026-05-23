@@ -22,7 +22,7 @@ export default function Settings() {
 
   async function submit() {
     try {
-      const res = await api.put('/settings', { avatarIndex: selectedAvatarIndex })
+      const res = await api.put('/users/me', { avatarIndex: selectedAvatarIndex })
       if (!res.ok) {
         shake()
         return
