@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { api } from '../lib/api.js'
@@ -75,6 +75,7 @@ const initialState: State = {
 export default function Chat() {
   const { user } = useAuth()
   const [state, dispatch] = useReducer(reducer, initialState)
+  const [socketConnected, setSocketConnected] = useState(false)
 
   useEffect(() => {
     api.get('/conversations')
@@ -82,35 +83,38 @@ export default function Chat() {
       .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
 
     socket.connect()
+    socket.on('connect', () => setSocketConnected(true))
     socket.on('message:new', (message: Message) => {
       dispatch({ type: 'APPEND_MESSAGE', message })
     })
 
     return () => {
+      socket.off('connect')
       socket.off('message:new')
       socket.disconnect()
+      setSocketConnected(false)
     }
   }, [])
 
   async function selectConversation(id: string) {
-    dispatch({ type: 'SET_ACTIVE', conversationId: id })
     if (!state.messages[id]) {
       const messages: Message[] = await api.get(`/conversations/${id}/messages`).then(r => r.json())
       dispatch({ type: 'SET_MESSAGES', conversationId: id, messages })
     }
+    dispatch({ type: 'SET_ACTIVE', conversationId: id })
   }
 
   async function selectUser(u: UserSummary) {
     const conversation: Conversation = await api
       .post('/conversations', { targetUserId: u.id })
       .then(r => r.json())
-    dispatch({ type: 'UPSERT_CONVERSATION', conversation })
     if (!state.messages[conversation.id]) {
       const messages: Message[] = await api
         .get(`/conversations/${conversation.id}/messages`)
         .then(r => r.json())
       dispatch({ type: 'SET_MESSAGES', conversationId: conversation.id, messages })
     }
+    dispatch({ type: 'UPSERT_CONVERSATION', conversation })
   }
 
   async function handleToggleUserList() {
@@ -124,10 +128,7 @@ export default function Chat() {
   async function sendMessage(body: string) {
     const id = state.activeConversationId
     if (!id) return
-    const message: Message = await api
-      .post(`/conversations/${id}/messages`, { body })
-      .then(r => r.json())
-    dispatch({ type: 'APPEND_MESSAGE', message })
+    await api.post(`/conversations/${id}/messages`, { body })
   }
 
   const activeMessages = state.activeConversationId
@@ -137,7 +138,7 @@ export default function Chat() {
   const activeConversation = state.conversations.find(c => c.id === state.activeConversationId)
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full" data-socket-connected={socketConnected ? 'true' : 'false'}>
       <Sidebar
         conversations={state.conversations}
         users={state.users}

@@ -31,7 +31,7 @@ export default function MessageThread({ messages, currentUserId }: Props) {
   }, [messages])
 
   return (
-    <div className="flex-1 overflow-y-auto py-4">
+    <div data-testid="message-thread" className="flex-1 overflow-y-auto py-4">
       <div className="w-[93%] mx-auto flex flex-col gap-1">
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
