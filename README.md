@@ -1,6 +1,6 @@
 # Chatter
 
-A personal 1-on-1 chat app modeled on iMessage.
+A personal chat app modeled on iMessage.
 
 ## Features
 
