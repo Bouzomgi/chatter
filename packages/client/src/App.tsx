@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/auth.js'
+import { SocketProvider } from './context/socket.js'
 import Header from './components/layout/Header.js'
 import Login from './pages/Login.js'
 import Register from './pages/Register.js'
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <SocketProvider>
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Header />
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -37,6 +39,7 @@ export default function App() {
             </Routes>
           </div>
         </div>
+        </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
   )

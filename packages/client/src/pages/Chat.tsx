@@ -1,6 +1,7 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
+import { useSocket } from '../context/socket.js'
 import { api } from '../lib/api.js'
 import { socket } from '../lib/socket.js'
 import Sidebar from '../components/chat/Sidebar.js'
@@ -74,25 +75,23 @@ const initialState: State = {
 
 export default function Chat() {
   const { user } = useAuth()
+  const { socketConnected, setActiveConversationId } = useSocket()
   const [state, dispatch] = useReducer(reducer, initialState)
-  const [socketConnected, setSocketConnected] = useState(false)
 
   useEffect(() => {
     api.get('/conversations')
       .then(r => r.json())
       .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
 
-    socket.connect()
-    socket.on('connect', () => setSocketConnected(true))
-    socket.on('message:new', (message: Message) => {
+    function onMessageNew(message: Message) {
       dispatch({ type: 'APPEND_MESSAGE', message })
-    })
+    }
+
+    socket.on('message:new', onMessageNew)
 
     return () => {
-      socket.off('connect')
-      socket.off('message:new')
-      socket.disconnect()
-      setSocketConnected(false)
+      socket.off('message:new', onMessageNew)
+      setActiveConversationId(null)
     }
   }, [])
 
@@ -102,6 +101,7 @@ export default function Chat() {
       dispatch({ type: 'SET_MESSAGES', conversationId: id, messages })
     }
     dispatch({ type: 'SET_ACTIVE', conversationId: id })
+    setActiveConversationId(id)
   }
 
   async function selectUser(u: UserSummary) {
@@ -115,6 +115,7 @@ export default function Chat() {
       dispatch({ type: 'SET_MESSAGES', conversationId: conversation.id, messages })
     }
     dispatch({ type: 'UPSERT_CONVERSATION', conversation })
+    setActiveConversationId(conversation.id)
   }
 
   async function handleToggleUserList() {
