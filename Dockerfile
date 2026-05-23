@@ -1,5 +1,5 @@
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+RUN apk add --no-cache openssl && corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # --- Builder stage ---
 FROM base AS builder
@@ -25,7 +25,7 @@ COPY --from=builder /app/packages/server/dist packages/server/dist
 COPY packages/server/prisma packages/server/prisma
 RUN pnpm --filter @chatter/server exec prisma generate
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm --filter @chatter/server exec prisma migrate deploy && node packages/server/dist/index.js"]
+CMD ["sh", "-c", "pnpm --filter @chatter/server exec prisma migrate deploy && if [ \"$SEED\" = \"true\" ]; then node packages/server/dist/seed.js; fi && node packages/server/dist/index.js"]
 
 # --- Client production stage ---
 FROM nginx:alpine AS client-production
