@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { api } from '../lib/api.js'
@@ -28,10 +28,18 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_CONVERSATIONS':
       return { ...state, conversations: action.conversations }
-    case 'SET_MESSAGES':
-      return { ...state, messages: { ...state.messages, [action.conversationId]: action.messages } }
+    case 'SET_MESSAGES': {
+      const existing = state.messages[action.conversationId] ?? []
+      const incomingIds = new Set(action.messages.map(m => m.id))
+      const extra = existing.filter(m => !incomingIds.has(m.id))
+      const merged = [...action.messages, ...extra].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      return { ...state, messages: { ...state.messages, [action.conversationId]: merged } }
+    }
     case 'APPEND_MESSAGE': {
       const existing = state.messages[action.message.conversationId] ?? []
+      if (existing.some(m => m.id === action.message.id)) return state
       return {
         ...state,
         messages: { ...state.messages, [action.message.conversationId]: [...existing, action.message] },
@@ -75,6 +83,7 @@ const initialState: State = {
 export default function Chat() {
   const { user } = useAuth()
   const [state, dispatch] = useReducer(reducer, initialState)
+  const [socketConnected, setSocketConnected] = useState(false)
 
   useEffect(() => {
     api.get('/conversations')
@@ -82,13 +91,16 @@ export default function Chat() {
       .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
 
     socket.connect()
+    socket.on('connect', () => setSocketConnected(true))
     socket.on('message:new', (message: Message) => {
       dispatch({ type: 'APPEND_MESSAGE', message })
     })
 
     return () => {
+      socket.off('connect')
       socket.off('message:new')
       socket.disconnect()
+      setSocketConnected(false)
     }
   }, [])
 
@@ -137,7 +149,7 @@ export default function Chat() {
   const activeConversation = state.conversations.find(c => c.id === state.activeConversationId)
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex h-full w-full" data-socket-connected={socketConnected ? 'true' : 'false'}>
       <Sidebar
         conversations={state.conversations}
         users={state.users}

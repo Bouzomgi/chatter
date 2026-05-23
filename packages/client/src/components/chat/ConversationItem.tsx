@@ -12,6 +12,7 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
 
   return (
     <div
+      data-testid="conversation-item"
       onClick={onClick}
       className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] border-b-2 border-white"
       style={{ borderRight: isActive ? '4px solid #00a676' : '4px solid transparent' }}
