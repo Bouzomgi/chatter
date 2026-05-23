@@ -10,7 +10,7 @@ After implementing a feature, follow this loop until the PR is fully ready:
 
 1. Commit, push, open a PR.
 2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes.
-3. Rebuild the Docker stack so the user can visually confirm the feature: `docker compose build --no-cache red && docker compose up -d`. The stack runs at `http://localhost:80`; admin credentials are `admin@admin.local` / `admin123`.
+3. Rebuild the Docker stack so the user can visually confirm the feature: `docker compose build --no-cache red nginx && docker compose up -d`. The client SPA is served by nginx — always rebuild both. The stack runs at `http://localhost:80`; admin credentials are `admin@admin.local` / `admin123`.
 4. Validate **every** item in the PR test plan yourself — do not ask the user to do this. For API/data ACs, use `curl`. For UI ACs, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`) and use Playwright or a headless browser. E2E tests are run automatically by CI — do not re-run them locally.
 5. Check off each passing item in the PR description with `gh pr edit`.
 6. If anything fails, fix it, push, and restart the loop from step 2.
