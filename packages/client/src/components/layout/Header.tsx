@@ -24,7 +24,7 @@ export default function Header() {
     }}>
       <h1
         onClick={() => navigate('/')}
-        style={{ color: 'white', fontSize: '75px', cursor: 'pointer', margin: 0, lineHeight: 'normal', display: 'flex', alignItems: 'center' }}
+        style={{ color: 'white', fontSize: '75px', cursor: 'pointer', margin: 0, lineHeight: 'normal', transform: 'translateY(8px)' }}
       >
         chatter
       </h1>
