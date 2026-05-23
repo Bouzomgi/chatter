@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/auth.js'
 
@@ -6,7 +5,6 @@ export default function Header() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [logoutHovered, setLogoutHovered] = useState(false)
 
   const onSettings = location.pathname === '/settings'
 
@@ -46,28 +44,12 @@ export default function Header() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <Link
             to="/settings"
-            style={{
-              color: onSettings ? 'white' : 'black',
-              fontSize: '30px',
-              fontWeight: 400,
-              textDecoration: 'none',
-            }}
+            className="header-action"
+            style={{ color: onSettings ? 'white' : undefined }}
           >
             settings
           </Link>
-          <button
-            onClick={logout}
-            onMouseEnter={() => setLogoutHovered(true)}
-            onMouseLeave={() => setLogoutHovered(false)}
-            style={{
-              color: logoutHovered ? 'white' : 'black',
-              fontSize: '30px',
-              fontWeight: 400,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
+          <button className="header-action" onClick={logout}>
             log out
           </button>
         </div>
