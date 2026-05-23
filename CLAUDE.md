@@ -11,7 +11,9 @@ After implementing a feature, follow this loop until the PR is fully ready:
 4. Check off each passing item in the PR description with `gh pr edit`.
 5. If anything fails, fix it, push, and restart the loop from step 2.
 
-Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow. Tests run against the full Docker Compose stack; seeded users are alice/bob/carol with password `password123`.
+Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow.
+
+E2E tests run against production — they must never create or delete data. Use the always-provisioned admin account (`admin@admin.local`, password from `ADMIN_PASSWORD` env var, default `admin123`) wherever a logged-in user is needed. Do not rely on seeded users (alice/bob/carol) — they only exist in local/dev environments.
 
 A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
