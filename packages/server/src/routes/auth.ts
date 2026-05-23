@@ -33,12 +33,13 @@ router.post('/register', async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(String(password), 12)
+  const avatarIndex = Math.floor(Math.random() * 9)
   const user = await prisma.user.create({
-    data: { username: String(username), email: String(email), passwordHash },
+    data: { username: String(username), email: String(email), passwordHash, avatarIndex },
   })
 
   res.cookie('token', issueToken(user.id), COOKIE_OPTS)
-  res.status(201).json({ id: user.id, username: user.username, email: user.email })
+  res.status(201).json({ id: user.id, username: user.username, email: user.email, avatarIndex: user.avatarIndex })
 })
 
 router.post('/login', async (req, res) => {
@@ -55,7 +56,7 @@ router.post('/login', async (req, res) => {
   }
 
   res.cookie('token', issueToken(user.id), COOKIE_OPTS)
-  res.json({ id: user.id, username: user.username, email: user.email })
+  res.json({ id: user.id, username: user.username, email: user.email, avatarIndex: user.avatarIndex })
 })
 
 router.post('/logout', (_req, res) => {
@@ -69,7 +70,7 @@ router.get('/me', requireAuth, async (req, res) => {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
-  res.json({ id: user.id, username: user.username, email: user.email })
+  res.json({ id: user.id, username: user.username, email: user.email, avatarIndex: user.avatarIndex })
 })
 
 export default router
