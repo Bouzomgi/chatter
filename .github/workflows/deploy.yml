@@ -88,5 +88,15 @@ jobs:
           tags: ghcr.io/bouzomgi/chatter-server:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Build and push nginx image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: nginx-production
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/bouzomgi/chatter-nginx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Deploy to Pi (stub)
         run: echo "Pi not yet configured — wired up in Phase 5"

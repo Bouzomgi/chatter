@@ -1,12 +1,14 @@
 services:
   nginx:
-    image: nginx:alpine
+    image: ghcr.io/bouzomgi/chatter-nginx:latest
+    build:
+      context: .
+      target: nginx-production
     ports:
       - "80:80"
     environment:
       DEPLOY_SECRET: ${DEPLOY_SECRET:-}
     volumes:
-      - ./docker/nginx/templates:/etc/nginx/templates:ro
       - ./docker/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro
     depends_on:
       red:

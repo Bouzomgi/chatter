@@ -27,3 +27,11 @@ COPY packages/server/prisma packages/server/prisma
 RUN pnpm --filter @chatter/server exec prisma generate
 EXPOSE 3000
 CMD ["sh", "-c", "pnpm --filter @chatter/server exec prisma migrate deploy && if [ \"$SEED\" = \"true\" ]; then node packages/server/dist/seed.js; fi && node packages/server/dist/index.js"]
+
+# --- Nginx production stage ---
+FROM nginx:alpine AS nginx-production
+COPY docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
+COPY docker/nginx/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
