@@ -15,6 +15,7 @@ export default function FormField({ fieldName, value, onChange, error, isPasswor
         placeholder={fieldName}
         value={value}
         onChange={onChange}
+        autoComplete="off"
         className="w-full bg-[#f7f9f9] rounded-lg shadow-[0px_1.5px_1.5px_0px_grey] text-[28px] indent-4 py-1 outline-none"
       />
       <span className="text-[18px] text-red-900 min-h-[18px] indent-1">{error}</span>
