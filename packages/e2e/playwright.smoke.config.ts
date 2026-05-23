@@ -5,5 +5,8 @@ export default defineConfig({
   timeout: 15000,
   use: {
     baseURL: process.env.SMOKE_BASE_URL ?? 'http://localhost',
+    ...(process.env.DEPLOY_SECRET && {
+      extraHTTPHeaders: { 'X-Deploy-Secret': process.env.DEPLOY_SECRET },
+    }),
   },
 })
