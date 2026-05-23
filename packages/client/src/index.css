@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+@keyframes shake {
+  0%, 40%, 80%  { transform: rotate(4deg); }
+  20%, 60%, 100% { transform: rotate(-4deg); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out 1;
+}

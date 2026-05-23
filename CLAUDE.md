@@ -4,7 +4,9 @@
 
 `main` is a protected branch — all work must be done on a feature branch and merged via PR.
 
-After implementing a phase or feature: commit the work, push the branch, open a PR, then loop (`/loop`) monitoring CI until all checks pass and all acceptance criteria are satisfied. Fix any failures before stopping.
+After implementing a feature: commit the work, push the branch, open a PR, then loop (`/loop`) monitoring CI until all checks pass. After every push (including fixes), re-check `gh pr checks <n>` to confirm the new run passes. Before declaring a PR ready, validate every item in the PR test plan by running the Playwright E2E tests against the app (`PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test`). Check off each passing item in the PR description using `gh pr edit`. Fix any failures before stopping.
+
+Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow. Tests run against the full Docker Compose stack; seeded users are alice/bob/carol with password `password123`.
 
 A personal chat web application modeled on iMessage. Users create accounts and exchange real-time 1-on-1 messages via a browser.
 
