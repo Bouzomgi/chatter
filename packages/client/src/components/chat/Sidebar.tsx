@@ -22,7 +22,7 @@ export default function Sidebar({
   onToggleUserList,
 }: Props) {
   return (
-    <div className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
+    <div data-testid="sidebar" className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
       <div className="flex-1 overflow-y-auto">
         {showUserList
           ? users.map(u => (
@@ -38,6 +38,7 @@ export default function Sidebar({
             ))}
       </div>
       <button
+        data-testid="sidebar-toggle"
         onClick={onToggleUserList}
         className="h-[63px] shrink-0 text-[22px] font-normal hover:bg-[#e0d0c1cc] border-t border-white cursor-pointer bg-transparent"
       >

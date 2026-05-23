@@ -10,6 +10,7 @@ export default function UserItem({ user, onClick }: Props) {
   return (
     <div
       onClick={onClick}
+      data-testid="user-item"
       className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] border-b-2 border-white"
     >
       <img

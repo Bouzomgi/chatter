@@ -21,6 +21,7 @@ export default function MessageInput({ onSend }: Props) {
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={handleKeyDown}
+        data-testid="message-input"
         placeholder="message"
         autoComplete="off"
         className="w-[90%] h-[30px] border border-gray-300 rounded-[15px] text-[14px] indent-[10px] outline-none"
