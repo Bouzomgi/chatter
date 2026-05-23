@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { useSocket } from '../context/socket.js'
@@ -24,6 +24,8 @@ type Action =
   | { type: 'SET_ACTIVE'; conversationId: string }
   | { type: 'UPSERT_CONVERSATION'; conversation: Conversation }
   | { type: 'TOGGLE_USER_LIST' }
+  | { type: 'MARK_UNREAD'; conversationId: string }
+  | { type: 'MARK_READ'; conversationId: string }
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -60,6 +62,20 @@ function reducer(state: State, action: Action): State {
     }
     case 'TOGGLE_USER_LIST':
       return { ...state, showUserList: !state.showUserList }
+    case 'MARK_UNREAD':
+      return {
+        ...state,
+        conversations: state.conversations.map(c =>
+          c.id === action.conversationId ? { ...c, unread: true } : c
+        ),
+      }
+    case 'MARK_READ':
+      return {
+        ...state,
+        conversations: state.conversations.map(c =>
+          c.id === action.conversationId ? { ...c, unread: false } : c
+        ),
+      }
     default:
       return state
   }
@@ -77,6 +93,7 @@ export default function Chat() {
   const { user } = useAuth()
   const { socketConnected, setActiveConversationId } = useSocket()
   const [state, dispatch] = useReducer(reducer, initialState)
+  const activeConvRef = useRef<string | null>(null)
 
   useEffect(() => {
     api.get('/conversations')
@@ -85,6 +102,11 @@ export default function Chat() {
 
     function onMessageNew(message: Message) {
       dispatch({ type: 'APPEND_MESSAGE', message })
+      if (message.conversationId === activeConvRef.current) {
+        api.patch(`/conversations/${message.conversationId}/read`)
+      } else if (message.senderId !== user!.id) {
+        dispatch({ type: 'MARK_UNREAD', conversationId: message.conversationId })
+      }
     }
 
     socket.on('message:new', onMessageNew)
@@ -101,7 +123,10 @@ export default function Chat() {
       dispatch({ type: 'SET_MESSAGES', conversationId: id, messages })
     }
     dispatch({ type: 'SET_ACTIVE', conversationId: id })
+    dispatch({ type: 'MARK_READ', conversationId: id })
+    activeConvRef.current = id
     setActiveConversationId(id)
+    api.patch(`/conversations/${id}/read`)
   }
 
   async function selectUser(u: UserSummary) {
@@ -115,7 +140,9 @@ export default function Chat() {
       dispatch({ type: 'SET_MESSAGES', conversationId: conversation.id, messages })
     }
     dispatch({ type: 'UPSERT_CONVERSATION', conversation })
+    activeConvRef.current = conversation.id
     setActiveConversationId(conversation.id)
+    api.patch(`/conversations/${conversation.id}/read`)
   }
 
   async function handleToggleUserList() {

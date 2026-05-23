@@ -28,4 +28,5 @@ export interface Conversation {
   createdAt: string
   otherUser: UserSummary
   latestMessage: { body: string; senderId: UserId; createdAt: string } | null
+  unread: boolean
 }

@@ -29,6 +29,7 @@ vi.mock('../lib/api.js', () => ({
   api: {
     get: vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })),
     post: vi.fn(() => Promise.resolve({ json: () => Promise.resolve({}) })),
+    patch: vi.fn(() => Promise.resolve()),
   },
 }))
 

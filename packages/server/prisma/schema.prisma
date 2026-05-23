@@ -29,6 +29,7 @@ model Conversation {
 model Participant {
   userId         String
   conversationId String
+  seen           Boolean      @default(true)
   user           User         @relation(fields: [userId], references: [id])
   conversation   Conversation @relation(fields: [conversationId], references: [id])
 

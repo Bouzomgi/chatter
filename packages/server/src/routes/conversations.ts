@@ -73,7 +73,6 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       where: { participants: { some: { userId: currentUserId } } },
       include: {
         participants: {
-          where: { userId: { not: currentUserId } },
           include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
         messages: {
@@ -85,12 +84,17 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     })
 
     const result = conversations
-      .map(c => ({
-        id: c.id,
-        createdAt: c.createdAt,
-        otherUser: c.participants[0]?.user ?? null,
-        latestMessage: c.messages[0] ?? null,
-      }))
+      .map(c => {
+        const myParticipant = c.participants.find(p => p.userId === currentUserId)
+        const otherParticipant = c.participants.find(p => p.userId !== currentUserId)
+        return {
+          id: c.id,
+          createdAt: c.createdAt,
+          otherUser: otherParticipant?.user ?? null,
+          latestMessage: c.messages[0] ?? null,
+          unread: myParticipant ? !myParticipant.seen : false,
+        }
+      })
       .sort((a, b) => {
         const aTime = a.latestMessage?.createdAt ?? a.createdAt
         const bTime = b.latestMessage?.createdAt ?? b.createdAt
@@ -154,9 +158,15 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       return
     }
 
-    const message = await prisma.message.create({
-      data: { conversationId, senderId: currentUserId, body: body.trim() },
-    })
+    const [message] = await prisma.$transaction([
+      prisma.message.create({
+        data: { conversationId, senderId: currentUserId, body: body.trim() },
+      }),
+      prisma.participant.updateMany({
+        where: { conversationId, userId: { not: currentUserId } },
+        data: { seen: false },
+      }),
+    ])
 
     io.to(conversationId).emit('message:new', {
       id: message.id,
@@ -173,6 +183,27 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       body: message.body,
       createdAt: message.createdAt,
     })
+  })
+
+  router.patch('/:id/read', requireAuth, async (req, res) => {
+    const currentUserId = req.user!.userId
+    const conversationId = req.params.id
+
+    const participant = await prisma.participant.findUnique({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+    })
+
+    if (!participant) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+
+    await prisma.participant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { seen: true },
+    })
+
+    res.status(204).end()
   })
 
   return router
