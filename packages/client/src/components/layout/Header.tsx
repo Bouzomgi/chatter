@@ -19,7 +19,7 @@ export default function Header() {
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 25px',
-      height: '80px',
+      height: '100px',
       flexShrink: 0,
     }}>
       <h1
