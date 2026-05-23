@@ -52,10 +52,11 @@ export default function Login() {
     <div className="flex items-center justify-center h-full w-full">
       <div className="bg-[#e0d0c180] rounded-3xl w-[30%] flex flex-col justify-between gap-4 px-[3%] py-[2%]">
         <h1 className="text-[50px] font-normal text-center m-0">login</h1>
-        <div className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={e => { e.preventDefault(); submit() }}>
           <FormField fieldName="email" value={form.email} onChange={handleChange} />
           <FormField fieldName="password" value={form.password} onChange={handleChange} isPassword />
-        </div>
+          <button type="submit" className="hidden" />
+        </form>
         <div className="flex flex-col gap-2">
           <div className="flex justify-center text-[24px] h-[32px] overflow-hidden">
             <span className="text-red-900">{error}</span>
