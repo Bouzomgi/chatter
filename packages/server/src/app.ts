@@ -7,6 +7,7 @@ import { Server } from 'socket.io'
 import authRouter from './routes/auth.js'
 import { createConversationsRouter } from './routes/conversations.js'
 import usersRouter from './routes/users.js'
+import settingsRouter from './routes/settings.js'
 import { registerSocketHandlers } from './socket/index.js'
 
 export function createApp(): { app: Express; httpServer: http.Server; io: Server } {
@@ -36,6 +37,7 @@ export function createApp(): { app: Express; httpServer: http.Server; io: Server
 
   app.use('/conversations', createConversationsRouter(io))
   app.use('/users', usersRouter)
+  app.use('/settings', settingsRouter)
 
   registerSocketHandlers(io)
 

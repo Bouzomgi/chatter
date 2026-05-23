@@ -4,6 +4,7 @@ import Header from './components/layout/Header.js'
 import Login from './pages/Login.js'
 import Register from './pages/Register.js'
 import Chat from './pages/Chat.js'
+import Settings from './pages/Settings.js'
 
 function ProtectedRoute() {
   const { user, loading } = useAuth()
@@ -31,6 +32,7 @@ export default function App() {
               </Route>
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<Chat />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
             </Routes>
           </div>
