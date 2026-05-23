@@ -23,28 +23,6 @@ Any feature that spans both frontend and backend must include Playwright E2E tes
 
 E2E tests run against production — they must never create or delete data. Use the always-provisioned admin account (`admin@admin.local`, password from `ADMIN_PASSWORD` env var, default `admin123`) wherever a logged-in user is needed. Do not rely on seeded users (alice/bob/carol) — they only exist in local/dev environments.
 
-## Product scope (v1)
-
-- 1-on-1 direct messages only (no group chats)
-- Full message history, stored indefinitely
-- Find other users by username
-- Standard security: HTTPS, bcrypt passwords, JWT auth (httpOnly cookies)
-
-## Architecture
-
-Three-tier monolith — one deployable unit, no microservices.
-
-```
-Browser (React SPA)
-  ↕ REST (HTTP)    — auth, user search, load chat history
-  ↕ WebSocket      — real-time message delivery
-Node.js + Express + Socket.io
-  ↕ SQL (Prisma)
-PostgreSQL
-```
-
-Real-time flow: client joins a Socket.io room keyed by `conversation_id`. Messages are HTTP POST'd to persist first, then the server emits to the room. On reconnect, the client fetches missed messages via REST.
-
 ## Repository structure
 
 Single monorepo, one deployable unit.
