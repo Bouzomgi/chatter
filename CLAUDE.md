@@ -9,10 +9,15 @@ A personal chat web application modeled on iMessage. Users create accounts and e
 After implementing a feature, follow this loop until the PR is fully ready:
 
 1. Commit, push, open a PR.
-2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes.
-3. Validate **every** item in the PR test plan yourself — do not ask the user to do this. For API/data ACs, use `curl`. For UI ACs, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`) and use Playwright or a headless browser. E2E tests are run automatically by CI — do not re-run them locally.
-4. Check off each passing item in the PR description with `gh pr edit`.
-5. If anything fails, fix it, push, and restart the loop from step 2.
+2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes. Once it passes, stop checking.
+3. Validate **every** item in the PR test plan yourself before rebuilding Docker — do not ask the user to do this. For API/data ACs, use `curl`. For UI ACs, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`) and use Playwright or a headless browser. E2E tests are run automatically by CI — do not re-run them locally.
+4. Rebuild the Docker stack so the user can visually confirm the feature. The client SPA is served by nginx; only rebuild `red` when server code changed:
+   - Frontend-only change: `docker compose build nginx 2>&1 | tail -5 && docker compose up -d`
+   - Backend or full-stack change: `docker compose build red nginx 2>&1 | tail -5 && docker compose up -d`
+   - Only use `--no-cache` when dependencies (package.json/pnpm-lock.yaml) changed — otherwise omit it.
+   - The stack runs at `http://localhost:80`; admin credentials are `admin@admin.local` / `admin123`.
+5. Check off each passing item in the PR description with `gh pr edit`.
+6. If anything fails, fix it and validate with the local dev server before rebuilding Docker again. Push and restart from step 2.
 
 Any feature that spans both frontend and backend must include Playwright E2E tests in `packages/e2e/tests/`. Use `getByPlaceholder` for inputs (FormField renders no `<label>`), `getByRole('button')` for the submit arrow.
 
