@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
-async function loginAs(page: Parameters<typeof test>[1] extends (args: { page: infer P }) => unknown ? P : never, email: string, password: string) {
+async function loginAs(page: Page, email: string, password: string) {
   await page.request.post('/auth/login', { data: { email, password } })
   await page.goto('/')
   await page.waitForSelector('[data-socket-connected="true"]')
