@@ -10,7 +10,7 @@ After implementing a feature, follow this loop until the PR is fully ready:
 
 1. Commit, push, open a PR.
 2. Monitor CI with `/loop` — after every push re-check `gh pr checks <n>` until the run passes.
-3. Validate **every** item in the PR test plan: perform any manual UI checks that require a running app. For UI checks, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`). E2E tests are run automatically by CI — do not re-run them locally.
+3. Validate **every** item in the PR test plan yourself — do not ask the user to do this. For API/data ACs, use `curl`. For UI ACs, start the Vite dev server (`pnpm vite --port 5173` in `packages/client`) and the server (`JWT_SECRET=dev-secret pnpm exec tsx src/index.ts` in `packages/server`) and use Playwright or a headless browser. E2E tests are run automatically by CI — do not re-run them locally.
 4. Check off each passing item in the PR description with `gh pr edit`.
 5. If anything fails, fix it, push, and restart the loop from step 2.
 
