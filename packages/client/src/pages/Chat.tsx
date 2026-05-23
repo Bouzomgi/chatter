@@ -28,18 +28,10 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_CONVERSATIONS':
       return { ...state, conversations: action.conversations }
-    case 'SET_MESSAGES': {
-      const existing = state.messages[action.conversationId] ?? []
-      const incomingIds = new Set(action.messages.map(m => m.id))
-      const extra = existing.filter(m => !incomingIds.has(m.id))
-      const merged = [...action.messages, ...extra].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      )
-      return { ...state, messages: { ...state.messages, [action.conversationId]: merged } }
-    }
+    case 'SET_MESSAGES':
+      return { ...state, messages: { ...state.messages, [action.conversationId]: action.messages } }
     case 'APPEND_MESSAGE': {
       const existing = state.messages[action.message.conversationId] ?? []
-      if (existing.some(m => m.id === action.message.id)) return state
       return {
         ...state,
         messages: { ...state.messages, [action.message.conversationId]: [...existing, action.message] },
@@ -105,24 +97,24 @@ export default function Chat() {
   }, [])
 
   async function selectConversation(id: string) {
-    dispatch({ type: 'SET_ACTIVE', conversationId: id })
     if (!state.messages[id]) {
       const messages: Message[] = await api.get(`/conversations/${id}/messages`).then(r => r.json())
       dispatch({ type: 'SET_MESSAGES', conversationId: id, messages })
     }
+    dispatch({ type: 'SET_ACTIVE', conversationId: id })
   }
 
   async function selectUser(u: UserSummary) {
     const conversation: Conversation = await api
       .post('/conversations', { targetUserId: u.id })
       .then(r => r.json())
-    dispatch({ type: 'UPSERT_CONVERSATION', conversation })
     if (!state.messages[conversation.id]) {
       const messages: Message[] = await api
         .get(`/conversations/${conversation.id}/messages`)
         .then(r => r.json())
       dispatch({ type: 'SET_MESSAGES', conversationId: conversation.id, messages })
     }
+    dispatch({ type: 'UPSERT_CONVERSATION', conversation })
   }
 
   async function handleToggleUserList() {
@@ -136,10 +128,7 @@ export default function Chat() {
   async function sendMessage(body: string) {
     const id = state.activeConversationId
     if (!id) return
-    const message: Message = await api
-      .post(`/conversations/${id}/messages`, { body })
-      .then(r => r.json())
-    dispatch({ type: 'APPEND_MESSAGE', message })
+    await api.post(`/conversations/${id}/messages`, { body })
   }
 
   const activeMessages = state.activeConversationId
