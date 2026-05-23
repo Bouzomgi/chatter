@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api.js'
+import { useAuth } from '../context/auth.js'
 import FormField from '../components/FormField.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { setUser } = useAuth()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [isShaking, setIsShaking] = useState(false)
@@ -27,13 +28,19 @@ export default function Login() {
       return
     }
     try {
-      const res = await api.post('/auth/login', form)
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
       if (!res.ok) {
         const body = await res.json()
         setError(body.error ?? 'Invalid credentials')
         shake()
         return
       }
+      setUser(await res.json())
       navigate('/')
     } catch {
       setError('Could not connect to server')

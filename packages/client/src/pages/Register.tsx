@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api.js'
+import { useAuth } from '../context/auth.js'
 import FormField from '../components/FormField.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
 
 export default function Register() {
   const navigate = useNavigate()
+  const { setUser } = useAuth()
   const [form, setForm] = useState({ email: '', username: '', password: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -29,13 +30,19 @@ export default function Register() {
       return
     }
     try {
-      const res = await api.post('/auth/register', form)
+      const res = await fetch('/auth/register', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
       if (!res.ok) {
         const body = await res.json()
         setError(body.error ?? 'Could not register')
         shake()
         return
       }
+      setUser(await res.json())
       navigate('/')
     } catch {
       setError('Could not connect to server')
