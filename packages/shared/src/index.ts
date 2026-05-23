@@ -9,10 +9,23 @@ export interface User {
   createdAt: string
 }
 
+export interface UserSummary {
+  id: UserId
+  username: string
+  avatarIndex: number
+}
+
 export interface Message {
   id: string
   conversationId: ConversationId
   senderId: UserId
   body: string
   createdAt: string
+}
+
+export interface Conversation {
+  id: ConversationId
+  createdAt: string
+  otherUser: UserSummary
+  latestMessage: { body: string; senderId: UserId; createdAt: string } | null
 }

@@ -37,7 +37,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       include: {
         participants: {
           where: { userId: targetUserId },
-          include: { user: { select: { id: true, username: true } } },
+          include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
       },
     })
@@ -54,7 +54,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       include: {
         participants: {
           where: { userId: targetUserId },
-          include: { user: { select: { id: true, username: true } } },
+          include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
       },
     })
@@ -74,7 +74,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       include: {
         participants: {
           where: { userId: { not: currentUserId } },
-          include: { user: { select: { id: true, username: true } } },
+          include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
         messages: {
           orderBy: { createdAt: 'desc' },
@@ -98,6 +98,34 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       })
 
     res.json(result)
+  })
+
+  router.get('/:id/messages', requireAuth, async (req, res) => {
+    const currentUserId = req.user!.userId
+    const conversationId = req.params.id
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { participants: { select: { userId: true } } },
+    })
+
+    if (!conversation) {
+      res.status(404).json({ error: 'Conversation not found' })
+      return
+    }
+
+    const isParticipant = conversation.participants.some(p => p.userId === currentUserId)
+    if (!isParticipant) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    res.json(messages)
   })
 
   router.post('/:id/messages', requireAuth, async (req, res) => {

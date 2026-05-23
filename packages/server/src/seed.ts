@@ -13,8 +13,8 @@ export async function seed() {
   const hash = await bcrypt.hash('password123', 12)
 
   const [alice, bob, carol] = await Promise.all([
-    prisma.user.create({ data: { username: 'alice', email: 'alice@example.com', passwordHash: hash, avatarIndex: 5 } }),
-    prisma.user.create({ data: { username: 'bob', email: 'bob@example.com', passwordHash: hash, avatarIndex: 0 } }),
+    prisma.user.create({ data: { username: 'alice', email: 'alice@example.com', passwordHash: hash, avatarIndex: 0 } }),
+    prisma.user.create({ data: { username: 'bob', email: 'bob@example.com', passwordHash: hash, avatarIndex: 2 } }),
     prisma.user.create({ data: { username: 'carol', email: 'carol@example.com', passwordHash: hash, avatarIndex: 6 } }),
   ])
 
