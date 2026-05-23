@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/auth.js'
 
 export default function Header() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
-  const [hovered, setHovered] = useState(false)
+  const location = useLocation()
+
+  const onSettings = location.pathname === '/settings'
 
   async function logout() {
     await fetch('/auth/logout', { method: 'POST', credentials: 'include' })
@@ -40,21 +41,18 @@ export default function Header() {
         chatter
       </h1>
       {user && (
-        <button
-          onClick={logout}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          style={{
-            color: hovered ? 'white' : 'black',
-            fontSize: '30px',
-            fontWeight: 400,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          log out
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <Link
+            to="/settings"
+            className="header-action"
+            style={{ color: onSettings ? 'white' : undefined }}
+          >
+            settings
+          </Link>
+          <button className="header-action" onClick={logout}>
+            log out
+          </button>
+        </div>
       )}
     </header>
   )
