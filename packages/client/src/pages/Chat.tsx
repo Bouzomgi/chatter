@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useLayoutEffect, useReducer, useRef } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { useSocket } from '../context/socket.js'
@@ -27,22 +27,29 @@ type Action =
   | { type: 'MARK_UNREAD'; conversationId: string }
   | { type: 'MARK_READ'; conversationId: string }
 
+function byLatestMessage(a: Conversation, b: Conversation) {
+  const aTime = a.latestMessage?.createdAt ?? a.createdAt
+  const bTime = b.latestMessage?.createdAt ?? b.createdAt
+  return new Date(bTime).getTime() - new Date(aTime).getTime()
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_CONVERSATIONS':
-      return { ...state, conversations: action.conversations }
+      return { ...state, conversations: [...action.conversations].sort(byLatestMessage) }
     case 'SET_MESSAGES':
       return { ...state, messages: { ...state.messages, [action.conversationId]: action.messages } }
     case 'APPEND_MESSAGE': {
       const existing = state.messages[action.message.conversationId] ?? []
+      const updated = state.conversations.map(c =>
+        c.id === action.message.conversationId
+          ? { ...c, latestMessage: { body: action.message.body, senderId: action.message.senderId, createdAt: action.message.createdAt } }
+          : c
+      )
       return {
         ...state,
         messages: { ...state.messages, [action.message.conversationId]: [...existing, action.message] },
-        conversations: state.conversations.map(c =>
-          c.id === action.message.conversationId
-            ? { ...c, latestMessage: { body: action.message.body, senderId: action.message.senderId, createdAt: action.message.createdAt } }
-            : c
-        ),
+        conversations: updated.sort(byLatestMessage),
       }
     }
     case 'SET_USERS':
@@ -51,14 +58,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, activeConversationId: action.conversationId, showUserList: false }
     case 'UPSERT_CONVERSATION': {
       const exists = state.conversations.some(c => c.id === action.conversation.id)
-      return {
-        ...state,
-        conversations: exists
-          ? state.conversations
-          : [action.conversation, ...state.conversations],
-        activeConversationId: action.conversation.id,
-        showUserList: false,
-      }
+      const conversations = exists
+        ? state.conversations
+        : [...state.conversations, action.conversation].sort(byLatestMessage)
+      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false }
     }
     case 'TOGGLE_USER_LIST':
       return { ...state, showUserList: !state.showUserList }
@@ -94,6 +97,19 @@ export default function Chat() {
   const { socketConnected, setActiveConversationId } = useSocket()
   const [state, dispatch] = useReducer(reducer, initialState)
   const activeConvRef = useRef<string | null>(null)
+  const hasAutoSelectedRef = useRef(false)
+
+  useLayoutEffect(() => {
+    const hasUnread = state.conversations.some(c => c.unread)
+    document.title = hasUnread ? 'chatter!!!' : 'chatter'
+  }, [state.conversations])
+
+  useEffect(() => {
+    if (!hasAutoSelectedRef.current && state.conversations.length > 0 && state.activeConversationId === null) {
+      hasAutoSelectedRef.current = true
+      selectConversation(state.conversations[0].id)
+    }
+  }, [state.conversations])
 
   useEffect(() => {
     api.get('/conversations')

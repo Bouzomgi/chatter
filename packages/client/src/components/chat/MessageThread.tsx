@@ -24,14 +24,25 @@ function showTimestamp(prev: Message | undefined, curr: Message): boolean {
 }
 
 export default function MessageThread({ messages, currentUserId }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const firstMsgIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const firstId = messages[0]?.id
+    if (firstId !== firstMsgIdRef.current) {
+      firstMsgIdRef.current = firstId
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
+    } else {
+      const el = containerRef.current
+      if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
   }, [messages])
 
   return (
-    <div data-testid="message-thread" className="flex-1 overflow-y-auto py-4">
+    <div ref={containerRef} data-testid="message-thread" className="flex-1 overflow-y-auto py-4">
       <div className="w-[93%] mx-auto flex flex-col gap-1">
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
