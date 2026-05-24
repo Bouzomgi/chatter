@@ -24,6 +24,11 @@ export default function Sidebar({
   return (
     <div data-testid="sidebar" className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {showUserList && (
+          <div className="px-4 pt-4 pb-2 text-[13px] font-semibold text-gray-400 uppercase tracking-widest border-b-2 border-white">
+            Start a New Chat
+          </div>
+        )}
         {showUserList
           ? users.map(u => (
               <UserItem key={u.id} user={u} onClick={() => onSelectUser(u)} />
