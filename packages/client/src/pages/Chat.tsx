@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef } from 'react'
 import type { Conversation, Message, UserSummary } from '@chatter/shared'
 import { useAuth } from '../context/auth.js'
 import { useSocket } from '../context/socket.js'
@@ -98,11 +98,6 @@ export default function Chat() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const activeConvRef = useRef<string | null>(null)
   const hasAutoSelectedRef = useRef(false)
-
-  useLayoutEffect(() => {
-    const hasUnread = state.conversations.some(c => c.unread)
-    document.title = hasUnread ? 'chatter!!!' : 'chatter'
-  }, [state.conversations])
 
   useEffect(() => {
     if (!hasAutoSelectedRef.current && state.conversations.length > 0 && state.activeConversationId === null) {

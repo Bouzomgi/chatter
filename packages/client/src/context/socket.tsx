@@ -19,6 +19,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   function setActiveConversationId(id: string | null) {
     activeConversationIdRef.current = id
+    document.title = 'chatter'
   }
 
   useEffect(() => {
@@ -27,13 +28,20 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socket.connect()
     function onConnect() { setSocketConnected(true) }
     function onDisconnect() { setSocketConnected(false) }
+    function onMessageNew(message: { conversationId: string }) {
+      if (message.conversationId !== activeConversationIdRef.current) {
+        document.title = 'chatter!!!'
+      }
+    }
 
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
+    socket.on('message:new', onMessageNew)
 
     return () => {
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
+      socket.off('message:new', onMessageNew)
       socket.disconnect()
       setSocketConnected(false)
     }
