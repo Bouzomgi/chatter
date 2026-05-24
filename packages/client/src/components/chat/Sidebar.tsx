@@ -23,7 +23,7 @@ export default function Sidebar({
 }: Props) {
   return (
     <div data-testid="sidebar" className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {showUserList
           ? users.map(u => (
               <UserItem key={u.id} user={u} onClick={() => onSelectUser(u)} />
