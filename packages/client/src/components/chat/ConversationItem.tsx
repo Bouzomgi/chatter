@@ -27,7 +27,6 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
       data-testid="conversation-item"
       onClick={onClick}
       className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc]"
-      style={{ borderRight: isActive && !isAnimating ? '4px solid #00a676' : '4px solid transparent' }}
     >
       <img
         src={getAvatarSrc(otherUser.avatarIndex)}
@@ -40,16 +39,18 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
           <span className="text-[13px] text-gray-500 truncate">{latestMessage.body}</span>
         )}
       </div>
-      {unread && !isAnimating && (
-        <div
-          className="absolute top-0 -right-1"
-          style={{ width: 0, height: 0, borderTop: '20px solid #00a676', borderLeft: '20px solid transparent' }}
-        />
+      {(unread || isAnimating) && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <div
+            className="h-2 w-2 rounded-full bg-[#00a676]"
+            style={isAnimating ? { animation: 'dot-shrink 0.2s ease-in forwards' } : {}}
+          />
+        </div>
       )}
-      {isAnimating && (
+      {(isActive || isAnimating) && (
         <div
-          className="absolute top-0 bottom-0 -right-1 w-5 bg-[#00a676] pointer-events-none"
-          style={{ animation: 'unread-to-active 0.2s ease-in-out forwards' }}
+          className="absolute top-0 bottom-0 right-0 w-1 bg-[#00a676]"
+          style={isAnimating ? { animation: 'bar-grow 0.3s ease-out forwards', transformOrigin: 'top' } : {}}
           onAnimationEnd={() => setIsAnimating(false)}
         />
       )}

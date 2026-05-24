@@ -32,11 +32,12 @@ html, body, #root {
   animation: shake 0.5s ease-in-out 1;
 }
 
-@keyframes unread-to-active {
-  from {
-    clip-path: polygon(100% 0%, 0% 0%, 100% 20px, 100% 20px);
-  }
-  to {
-    clip-path: polygon(calc(100% - 4px) 0%, 100% 0%, 100% 100%, calc(100% - 4px) 100%);
-  }
+@keyframes dot-shrink {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0); opacity: 0; }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
 }
