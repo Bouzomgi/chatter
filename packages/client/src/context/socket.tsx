@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { socket } from '../lib/socket.js'
 import { useAuth } from './auth.js'
-import type { Message } from '@chatter/shared'
 
 interface SocketState {
   socketConnected: boolean
@@ -29,7 +28,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socket.connect()
     function onConnect() { setSocketConnected(true) }
     function onDisconnect() { setSocketConnected(false) }
-    function onMessageNew(message: Message) {
+    function onMessageNew(message: { conversationId: string }) {
       if (message.conversationId !== activeConversationIdRef.current) {
         document.title = 'chatter!!!'
       }
@@ -45,7 +44,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       socket.off('message:new', onMessageNew)
       socket.disconnect()
       setSocketConnected(false)
-      document.title = 'chatter'
     }
   }, [user])
 
