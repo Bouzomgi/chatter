@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Conversation } from '@chatter/shared'
 import { getAvatarSrc } from '../../lib/avatars.js'
+import { formatConversationTime } from '../../lib/formatTimestamp.js'
 
 interface Props {
   conversation: Conversation
@@ -26,18 +27,22 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
     <div
       data-testid="conversation-item"
       onClick={onClick}
-      className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc]"
+      className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
     >
       <img
         src={getAvatarSrc(otherUser.avatarIndex)}
         alt={otherUser.username}
         className="h-12 w-12 rounded-full shrink-0"
       />
-      <div className="flex flex-col overflow-hidden">
-        <span className="font-bold text-[16px] truncate">{otherUser.username}</span>
-        {latestMessage && (
-          <span className="text-[13px] text-gray-500 truncate">{latestMessage.body}</span>
-        )}
+      <div className="flex flex-col overflow-hidden flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="font-bold text-[16px] truncate">{otherUser.username}</span>
+          {latestMessage && (
+            <span className="text-[11px] text-gray-400 shrink-0">{formatConversationTime(latestMessage.createdAt)}</span>
+          )}
+        </div>
+        <span className="text-[13px] text-gray-500 truncate pr-5">{latestMessage?.body ?? ' '}</span>
+        <span className="text-[13px] pr-5">&nbsp;</span>
       </div>
       {(unread || isAnimating) && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2">

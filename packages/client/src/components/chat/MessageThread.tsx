@@ -1,26 +1,29 @@
 import { useEffect, useRef } from 'react'
 import type { Message } from '@chatter/shared'
+import { formatMessageTimestamp } from '../../lib/formatTimestamp.js'
 
 interface Props {
   messages: Message[]
   currentUserId: string
 }
 
-function formatTime(iso: string): string {
-  const d = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffDays = diffMs / (1000 * 60 * 60 * 24)
-
-  if (diffDays < 1) return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'long' })
-  return d.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })
-}
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+const THIRTY_SECONDS_MS = 30 * 1000
 
 function showTimestamp(prev: Message | undefined, curr: Message): boolean {
   if (!prev) return true
   const gap = new Date(curr.createdAt).getTime() - new Date(prev.createdAt).getTime()
-  return gap > 2 * 60 * 60 * 1000
+  const prevDay = new Date(prev.createdAt)
+  const currDay = new Date(curr.createdAt)
+  const differentDays = prevDay.toDateString() !== currDay.toDateString()
+  return gap >= TWO_HOURS_MS || differentDays
+}
+
+function addSpacing(prev: Message | undefined, curr: Message): boolean {
+  if (!prev) return false
+  const senderChanged = prev.senderId !== curr.senderId
+  const gap = new Date(curr.createdAt).getTime() - new Date(prev.createdAt).getTime()
+  return senderChanged || gap >= THIRTY_SECONDS_MS
 }
 
 export default function MessageThread({ messages, currentUserId }: Props) {
@@ -47,17 +50,18 @@ export default function MessageThread({ messages, currentUserId }: Props) {
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const isMine = msg.senderId === currentUserId
-          const senderChanged = prev && prev.senderId !== msg.senderId
+          const showTs = showTimestamp(prev, msg)
+          const addSpace = !showTs && addSpacing(prev, msg)
 
           return (
             <div key={msg.id}>
-              {showTimestamp(prev, msg) && (
-                <div className="text-center text-[12px] text-gray-400 my-5">
-                  {formatTime(msg.createdAt)}
+              {showTs && (
+                <div className={`text-center text-[12px] text-gray-400 mb-2 ${i === 0 ? 'mt-1' : 'mt-2'}`}>
+                  {formatMessageTimestamp(msg.createdAt)}
                 </div>
               )}
               <div
-                className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${senderChanged ? 'mt-4' : ''}`}
+                className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${addSpace ? 'mt-2' : ''}`}
               >
                 <div
                   className="max-w-[60%] px-3 py-2 rounded-[10px] text-[15px] leading-snug"
