@@ -34,6 +34,7 @@ model Participant {
   conversation   Conversation @relation(fields: [conversationId], references: [id])
 
   @@id([conversationId, userId])
+  @@index([userId])
 }
 
 model Message {
@@ -44,4 +45,6 @@ model Message {
   senderId       String
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   sender         User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
 }
