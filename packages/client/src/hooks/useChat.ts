@@ -11,6 +11,7 @@ interface State {
   hasMore: Record<string, boolean>
   users: UserSummary[]
   activeConversationId: string | null
+  pendingUser: UserSummary | null
   showUserList: boolean
   loaded: boolean
 }
@@ -24,6 +25,7 @@ type Action =
   | { type: 'SET_ACTIVE'; conversationId: string }
   | { type: 'UPSERT_CONVERSATION'; conversation: Conversation }
   | { type: 'TOGGLE_USER_LIST' }
+  | { type: 'SET_PENDING_USER'; user: UserSummary | null }
   | { type: 'MARK_UNREAD'; conversationId: string }
   | { type: 'MARK_READ'; conversationId: string }
 
@@ -68,16 +70,18 @@ function reducer(state: State, action: Action): State {
     case 'SET_USERS':
       return { ...state, users: action.users }
     case 'SET_ACTIVE':
-      return { ...state, activeConversationId: action.conversationId, showUserList: false }
+      return { ...state, activeConversationId: action.conversationId, showUserList: false, pendingUser: null }
     case 'UPSERT_CONVERSATION': {
       const exists = state.conversations.some(c => c.id === action.conversation.id)
       const conversations = exists
         ? state.conversations
         : [...state.conversations, action.conversation].sort(byLatestMessage)
-      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false }
+      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false, pendingUser: null }
     }
     case 'TOGGLE_USER_LIST':
-      return { ...state, showUserList: !state.showUserList }
+      return { ...state, showUserList: !state.showUserList, pendingUser: null }
+    case 'SET_PENDING_USER':
+      return { ...state, pendingUser: action.user, showUserList: false }
     case 'MARK_UNREAD':
       return {
         ...state,
@@ -103,6 +107,7 @@ const initialState: State = {
   hasMore: {},
   users: [],
   activeConversationId: null,
+  pendingUser: null,
   showUserList: false,
   loaded: false,
 }
@@ -184,17 +189,13 @@ export function useChat() {
     dispatch({ type: 'PREPEND_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
   }
 
-  async function selectUser(u: UserSummary) {
-    const conversation: Conversation = await api
-      .post('/conversations', { targetUserId: u.id })
-      .then(r => r.json())
-    if (!state.messages[conversation.id]) {
-      await fetchMessages(conversation.id)
+  function selectUser(u: UserSummary) {
+    const existing = state.conversations.find(c => c.otherUser?.id === u.id)
+    if (existing) {
+      selectConversation(existing.id)
+      return
     }
-    dispatch({ type: 'UPSERT_CONVERSATION', conversation })
-    activeConvRef.current = conversation.id
-    setActiveConversationId(conversation.id)
-    api.patch(`/conversations/${conversation.id}/read`)
+    dispatch({ type: 'SET_PENDING_USER', user: u })
   }
 
   async function handleToggleUserList() {
@@ -206,6 +207,22 @@ export function useChat() {
   }
 
   async function sendMessage(body: string) {
+    if (state.pendingUser) {
+      const conversation: Conversation = await api
+        .post('/conversations', { targetUserId: state.pendingUser.id })
+        .then(r => r.json())
+      const message: Message = await api
+        .post(`/conversations/${conversation.id}/messages`, { body })
+        .then(r => r.json())
+      // Socket won't deliver message:new for a brand-new room (joined at connect
+      // time, before this conversation existed), so append it directly.
+      dispatch({ type: 'UPSERT_CONVERSATION', conversation })
+      dispatch({ type: 'APPEND_MESSAGE', message })
+      activeConvRef.current = conversation.id
+      setActiveConversationId(conversation.id)
+      api.patch(`/conversations/${conversation.id}/read`)
+      return
+    }
     const id = state.activeConversationId
     if (!id) return
     await api.post(`/conversations/${id}/messages`, { body })
@@ -226,6 +243,7 @@ export function useChat() {
     activeMessages,
     activeHasMore,
     activeConversation,
+    pendingUser: state.pendingUser,
     selectConversation,
     loadMore,
     selectUser,
