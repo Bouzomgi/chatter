@@ -51,8 +51,8 @@ export default function Register() {
   }
 
   return (
-    <div className="flex items-center justify-center h-full w-full">
-      <div className="bg-[#e0d0c180] rounded-3xl w-[30%] flex flex-col justify-between gap-4 px-[3%] py-[2%]">
+    <div className="flex items-center justify-center h-full" style={{ width: '100vw' }}>
+      <div className="bg-[#e0d0c180] rounded-3xl w-[30%] min-w-[320px] flex flex-col justify-between gap-4 px-[3%] py-[2%]">
         <h1 className="text-[50px] font-normal text-center m-0">sign up</h1>
         <form className="flex flex-col gap-4" onSubmit={e => { e.preventDefault(); submit() }}>
           <FormField fieldName="email" value={form.email} onChange={handleChange} />
@@ -66,7 +66,7 @@ export default function Register() {
             {error && <span className="text-red-900">{error}</span>}
           </div>
           <div className="flex justify-between items-center">
-            <Link to="/login" className="text-[22px] ml-[10%] hover:drop-shadow-[1px_1px_1px_#00a676] cursor-pointer no-underline text-inherit">
+            <Link to="/login" className="text-[22px] hover:drop-shadow-[1px_1px_1px_#00a676] cursor-pointer no-underline text-inherit">
               login?
             </Link>
             <SubmissionArrow onSubmit={submit} isShaking={isShaking} />

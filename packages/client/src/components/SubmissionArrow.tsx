@@ -7,11 +7,12 @@ type SubmissionArrowProps = {
 
 export default function SubmissionArrow({ onSubmit, isShaking }: SubmissionArrowProps) {
   return (
-    <button onClick={onSubmit} className="p-0 border-none bg-transparent cursor-pointer">
+    <button onClick={onSubmit} aria-label="Submit" className="p-0 border-none bg-transparent cursor-pointer">
       <img
         src={arrowSvg}
         alt="submit"
-        className={`h-[70px] hover:rotate-[4deg] hover:drop-shadow-[2px_4px_1px_#00a676] transition-transform ${isShaking ? 'shake' : ''}`}
+        style={{ height: 'clamp(50px, 5vw, 70px)' }}
+        className={`hover:rotate-[4deg] hover:drop-shadow-[2px_4px_1px_#00a676] transition-transform ${isShaking ? 'shake' : ''}`}
       />
     </button>
   )
