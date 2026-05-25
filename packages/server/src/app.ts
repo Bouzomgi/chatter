@@ -4,10 +4,18 @@ import { fileURLToPath } from 'url'
 import express, { Express } from 'express'
 import cookieParser from 'cookie-parser'
 import { Server } from 'socket.io'
+import { rateLimit } from 'express-rate-limit'
 import authRouter from './routes/auth.js'
 import { createConversationsRouter } from './routes/conversations.js'
 import usersRouter from './routes/users.js'
 import { registerSocketHandlers } from './socket/index.js'
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+})
 
 export function createApp(): { app: Express; httpServer: http.Server; io: Server } {
   const app = express()
@@ -29,7 +37,7 @@ export function createApp(): { app: Express; httpServer: http.Server; io: Server
     })
   }
 
-  app.use('/auth', authRouter)
+  app.use('/auth', authLimiter, authRouter)
 
   const httpServer = http.createServer(app)
   const io = new Server(httpServer)
