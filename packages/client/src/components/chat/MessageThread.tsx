@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Message } from '@chatter/shared'
 import { formatMessageTimestamp } from '../../lib/formatTimestamp.js'
 
@@ -34,6 +34,7 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
   const firstMsgIdRef = useRef<string | undefined>(undefined)
   const prevScrollHeightRef = useRef<number | null>(null)
   const isLoadingMoreRef = useRef(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -42,10 +43,10 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
     const firstId = messages[0]?.id
 
     if (prevScrollHeightRef.current !== null) {
-      // Restore position after prepend so the viewport doesn't jump
       el.scrollTop = el.scrollHeight - prevScrollHeightRef.current
       prevScrollHeightRef.current = null
       isLoadingMoreRef.current = false
+      setIsLoadingMore(false)
       firstMsgIdRef.current = firstId
       return
     }
@@ -66,6 +67,7 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
     if (el.scrollTop < 100) {
       isLoadingMoreRef.current = true
       prevScrollHeightRef.current = el.scrollHeight
+      setIsLoadingMore(true)
       onLoadMore()
     }
   }
@@ -78,6 +80,11 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
       onScroll={handleScroll}
     >
       <div className="w-[93%] mx-auto flex flex-col gap-1">
+        {isLoadingMore && (
+          <div data-testid="load-more-spinner" className="flex justify-center py-2">
+            <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-[#00a676] animate-spin" />
+          </div>
+        )}
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const isMine = msg.senderId === currentUserId

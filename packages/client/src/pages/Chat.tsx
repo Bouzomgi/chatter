@@ -38,7 +38,11 @@ export default function Chat() {
             <div className="h-[60px] shrink-0 flex items-center px-6 border-b-2 border-gray-300 w-[93%] mx-auto">
               <span className="text-[18px] font-semibold">{activeConversation.otherUser.username}</span>
             </div>
-            {activeMessages !== null && (
+            {activeMessages === null ? (
+              <div data-testid="messages-loading" className="flex-1 flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full border-2 border-gray-300 border-t-[#00a676] animate-spin" />
+              </div>
+            ) : (
               <MessageThread
                 messages={activeMessages}
                 currentUserId={user!.id}
