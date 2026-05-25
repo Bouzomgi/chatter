@@ -109,6 +109,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
           unread: myParticipant ? !myParticipant.seen : false,
         }
       })
+      .filter(c => c.latestMessage !== null)
       .sort((a, b) => {
         const aTime = a.latestMessage?.createdAt ?? a.createdAt
         const bTime = b.latestMessage?.createdAt ?? b.createdAt
