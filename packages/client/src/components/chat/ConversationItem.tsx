@@ -23,10 +23,21 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
     prevUnreadRef.current = unread
   }, [isActive, unread])
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
   return (
     <div
       data-testid="conversation-item"
+      role="button"
+      tabIndex={0}
+      aria-label={`Conversation with ${otherUser.username}${unread ? ', unread' : ''}`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
     >
       {(unread || isAnimating) && (

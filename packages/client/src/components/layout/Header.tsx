@@ -26,7 +26,11 @@ export default function Header() {
       flexShrink: 0,
     }}>
       <h1
+        role="button"
+        tabIndex={0}
+        aria-label="Go to chatter home"
         onClick={() => navigate('/')}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/') } }}
         style={{
           color: 'white',
           fontSize: '75px',

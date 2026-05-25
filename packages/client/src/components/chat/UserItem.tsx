@@ -7,9 +7,20 @@ interface Props {
 }
 
 export default function UserItem({ user, onClick }: Props) {
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Start chat with ${user.username}`}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       data-testid="user-item"
       className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] border-b-2 border-white"
     >

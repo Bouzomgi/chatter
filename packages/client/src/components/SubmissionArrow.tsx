@@ -7,7 +7,7 @@ type SubmissionArrowProps = {
 
 export default function SubmissionArrow({ onSubmit, isShaking }: SubmissionArrowProps) {
   return (
-    <button onClick={onSubmit} className="p-0 border-none bg-transparent cursor-pointer">
+    <button onClick={onSubmit} aria-label="Send message" className="p-0 border-none bg-transparent cursor-pointer">
       <img
         src={arrowSvg}
         alt="submit"

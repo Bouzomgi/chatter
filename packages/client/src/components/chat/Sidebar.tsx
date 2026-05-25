@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { Conversation, UserSummary } from '@chatter/shared'
 import ConversationItem from './ConversationItem.js'
 import UserItem from './UserItem.js'
@@ -21,9 +22,18 @@ export default function Sidebar({
   onSelectUser,
   onToggleUserList,
 }: Props) {
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (showUserList) {
+      const first = listRef.current?.querySelector<HTMLElement>('[tabindex="0"]')
+      first?.focus()
+    }
+  }, [showUserList])
+
   return (
     <div data-testid="sidebar" className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         {showUserList && (
           <div className="px-4 pt-4 pb-2 text-[13px] font-semibold text-gray-400 uppercase tracking-widest border-b-2 border-white">
             Start a New Chat
@@ -44,6 +54,7 @@ export default function Sidebar({
       </div>
       <button
         data-testid="sidebar-toggle"
+        aria-label={showUserList ? 'Back to conversations' : 'Start a new chat'}
         onClick={onToggleUserList}
         className="h-[63px] shrink-0 text-[22px] font-normal hover:bg-[#e0d0c1cc] border-t border-white cursor-pointer bg-transparent"
       >
