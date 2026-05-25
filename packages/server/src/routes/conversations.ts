@@ -1,20 +1,29 @@
 import { Router } from 'express'
 import type { Router as ExpressRouter } from 'express'
 import { Server } from 'socket.io'
+import { z } from 'zod'
 import prisma from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
+
+const createConversationSchema = z.object({
+  targetUserId: z.string().min(1),
+})
+
+const createMessageSchema = z.object({
+  body: z.string().min(1).transform(s => s.trim()).refine(s => s.length > 0, { message: 'body is required' }),
+})
 
 export function createConversationsRouter(io: Server): ExpressRouter {
   const router = Router()
 
   router.post('/', requireAuth, async (req, res) => {
     const currentUserId = req.user!.userId
-    const { targetUserId } = req.body as Record<string, unknown>
-
-    if (!targetUserId || typeof targetUserId !== 'string') {
+    const parsed = createConversationSchema.safeParse(req.body)
+    if (!parsed.success) {
       res.status(400).json({ error: 'targetUserId is required' })
       return
     }
+    const { targetUserId } = parsed.data
 
     if (targetUserId === currentUserId) {
       res.status(400).json({ error: 'Cannot start a conversation with yourself' })
@@ -135,12 +144,12 @@ export function createConversationsRouter(io: Server): ExpressRouter {
   router.post('/:id/messages', requireAuth, async (req, res) => {
     const currentUserId = req.user!.userId
     const conversationId = req.params.id
-    const { body } = req.body as Record<string, unknown>
-
-    if (!body || typeof body !== 'string' || body.trim() === '') {
+    const parsed = createMessageSchema.safeParse(req.body)
+    if (!parsed.success) {
       res.status(400).json({ error: 'body is required' })
       return
     }
+    const body = parsed.data.body
 
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -160,7 +169,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
 
     const [message] = await prisma.$transaction([
       prisma.message.create({
-        data: { conversationId, senderId: currentUserId, body: body.trim() },
+        data: { conversationId, senderId: currentUserId, body },
       }),
       prisma.participant.updateMany({
         where: { conversationId, userId: { not: currentUserId } },
