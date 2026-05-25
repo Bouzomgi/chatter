@@ -4,7 +4,7 @@ import ErrorBoundary from './ErrorBoundary.js'
 
 afterEach(cleanup)
 
-function Bomb() {
+function Bomb(): never {
   throw new Error('boom')
 }
 
@@ -25,9 +25,12 @@ describe('ErrorBoundary', () => {
   it('navigates to / when "go home" is clicked', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const assignSpy = vi.fn()
-    Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
-    window.location = { ...window.location, href: '' } as Location
-    Object.defineProperty(window.location, 'href', { set: assignSpy, get: () => '' })
+    Object.defineProperty(window, 'location', {
+      value: { href: '' },
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(window.location, 'href', { set: assignSpy, get: () => '', configurable: true })
 
     render(<ErrorBoundary><Bomb /></ErrorBoundary>)
     fireEvent.click(screen.getByRole('button', { name: 'go home' }))
