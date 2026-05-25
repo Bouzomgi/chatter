@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     globalSetup: ['./src/test/globalSetup.ts'],
+    globalTeardown: ['./src/test/globalTeardown.ts'],
   },
 });
