@@ -1,8 +1,20 @@
 import { Router, IRouter } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { z } from 'zod'
 import prisma from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
+
+const registerSchema = z.object({
+  username: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(1),
+})
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+})
 
 const router: IRouter = Router()
 
@@ -18,24 +30,25 @@ function issueToken(userId: string): string {
 }
 
 router.post('/register', async (req, res) => {
-  const { username, email, password } = req.body as Record<string, unknown>
-  if (!username || !email || !password) {
+  const parsed = registerSchema.safeParse(req.body)
+  if (!parsed.success) {
     res.status(400).json({ error: 'username, email and password are required' })
     return
   }
+  const { username, email, password } = parsed.data
 
   const existing = await prisma.user.findFirst({
-    where: { OR: [{ username: String(username) }, { email: String(email) }] },
+    where: { OR: [{ username }, { email }] },
   })
   if (existing) {
     res.status(409).json({ error: 'Username or email already taken' })
     return
   }
 
-  const passwordHash = await bcrypt.hash(String(password), 12)
+  const passwordHash = await bcrypt.hash(password, 12)
   const avatarIndex = Math.floor(Math.random() * 9)
   const user = await prisma.user.create({
-    data: { username: String(username), email: String(email), passwordHash, avatarIndex },
+    data: { username, email, passwordHash, avatarIndex },
   })
 
   res.cookie('token', issueToken(user.id), COOKIE_OPTS)
@@ -43,14 +56,15 @@ router.post('/register', async (req, res) => {
 })
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body as Record<string, unknown>
-  if (!email || !password) {
+  const parsed = loginSchema.safeParse(req.body)
+  if (!parsed.success) {
     res.status(400).json({ error: 'email and password are required' })
     return
   }
+  const { email, password } = parsed.data
 
-  const user = await prisma.user.findUnique({ where: { email: String(email) } })
-  if (!user || !(await bcrypt.compare(String(password), user.passwordHash))) {
+  const user = await prisma.user.findUnique({ where: { email } })
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     res.status(401).json({ error: 'Invalid credentials' })
     return
   }
