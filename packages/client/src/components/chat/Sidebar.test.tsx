@@ -21,7 +21,7 @@ const conversations: Conversation[] = [
     id: 'c2',
     createdAt: '2026-01-01T00:00:00.000Z',
     otherUser: { id: 'u3', username: 'carol', avatarIndex: 2 },
-    latestMessage: null,
+    latestMessage: { body: 'see you then', senderId: 'u3', createdAt: '2026-01-01T01:00:00.000Z' },
     unread: true,
   },
 ]
