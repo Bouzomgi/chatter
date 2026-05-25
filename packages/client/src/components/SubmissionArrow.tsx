@@ -11,7 +11,8 @@ export default function SubmissionArrow({ onSubmit, isShaking }: SubmissionArrow
       <img
         src={arrowSvg}
         alt="submit"
-        className={`h-[70px] hover:rotate-[4deg] hover:drop-shadow-[2px_4px_1px_#00a676] transition-transform ${isShaking ? 'shake' : ''}`}
+        style={{ height: 'clamp(50px, 5vw, 70px)' }}
+        className={`hover:rotate-[4deg] hover:drop-shadow-[2px_4px_1px_#00a676] transition-transform ${isShaking ? 'shake' : ''}`}
       />
     </button>
   )

@@ -3,6 +3,7 @@
 html, body, #root {
   height: 100%;
   width: 100%;
+  min-width: 650px;
   margin: 0;
   font-family: 'Josefin Sans', sans-serif;
   font-size: 18px;
