@@ -15,6 +15,7 @@ const { socketHandlers, mockSocket } = vi.hoisted(() => {
       socketHandlers[event].push(handler)
     }),
     off: vi.fn((event: string) => { delete socketHandlers[event] }),
+    io: { on: vi.fn(), off: vi.fn() },
   }
   return { socketHandlers, mockSocket }
 })
