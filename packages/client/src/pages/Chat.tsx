@@ -13,12 +13,15 @@ export default function Chat() {
     activeMessages,
     activeHasMore,
     activeConversation,
+    pendingUser,
     selectConversation,
     loadMore,
     selectUser,
     handleToggleUserList,
     sendMessage,
   } = useChat()
+
+  const displayUser = activeConversation?.otherUser ?? pendingUser
 
   return (
     <div className="flex h-full w-full" data-socket-connected={socketConnected ? 'true' : 'false'}>
@@ -33,22 +36,26 @@ export default function Chat() {
       />
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        {activeConversation ? (
+        {displayUser ? (
           <>
             <div className="h-[60px] shrink-0 flex items-center px-6 border-b-2 border-gray-300 w-[93%] mx-auto">
-              <span className="text-[18px] font-semibold">{activeConversation.otherUser.username}</span>
+              <span className="text-[18px] font-semibold">{displayUser.username}</span>
             </div>
-            {activeMessages === null ? (
-              <div data-testid="messages-loading" className="flex-1 flex items-center justify-center">
-                <div className="w-6 h-6 rounded-full border-2 border-gray-300 border-t-[#00a676] animate-spin" />
-              </div>
+            {activeConversation ? (
+              activeMessages === null ? (
+                <div data-testid="messages-loading" className="flex-1 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full border-2 border-gray-300 border-t-[#00a676] animate-spin" />
+                </div>
+              ) : (
+                <MessageThread
+                  messages={activeMessages}
+                  currentUserId={user!.id}
+                  hasMore={activeHasMore}
+                  onLoadMore={() => loadMore(state.activeConversationId!)}
+                />
+              )
             ) : (
-              <MessageThread
-                messages={activeMessages}
-                currentUserId={user!.id}
-                hasMore={activeHasMore}
-                onLoadMore={() => loadMore(state.activeConversationId!)}
-              />
+              <MessageThread messages={[]} currentUserId={user!.id} />
             )}
             <MessageInput onSend={sendMessage} />
           </>
