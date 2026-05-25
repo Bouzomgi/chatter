@@ -23,10 +23,6 @@ export default function Settings() {
   async function submit() {
     try {
       const res = await api.put('/users/me', { avatarIndex: selectedAvatarIndex })
-      if (!res.ok) {
-        shake()
-        return
-      }
       const updated: User = await res.json()
       setUser(updated)
       navigate('/')
