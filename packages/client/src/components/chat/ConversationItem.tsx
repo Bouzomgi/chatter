@@ -29,6 +29,15 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
       onClick={onClick}
       className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
     >
+      {(unread || isAnimating) && (
+        <div className="absolute left-2 top-1/2 -translate-y-1/2">
+          <div
+            className="h-2 w-2 rounded-full bg-[#00a676]"
+            style={isAnimating ? { animation: 'dot-shrink 0.2s ease-in forwards' } : {}}
+            onAnimationEnd={() => setIsAnimating(false)}
+          />
+        </div>
+      )}
       <img
         src={getAvatarSrc(otherUser.avatarIndex)}
         alt={otherUser.username}
@@ -41,23 +50,11 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
             <span className="text-[11px] text-gray-400 shrink-0">{formatConversationTime(latestMessage.createdAt)}</span>
           )}
         </div>
-        <span className="text-[13px] text-gray-500 truncate pr-5">{latestMessage?.body ?? ' '}</span>
-        <span className="text-[13px] pr-5">&nbsp;</span>
+        <span className="text-[13px] text-gray-500 truncate">{latestMessage?.body ?? ' '}</span>
+        <span className="text-[13px]">&nbsp;</span>
       </div>
-      {(unread || isAnimating) && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <div
-            className="h-2 w-2 rounded-full bg-[#00a676]"
-            style={isAnimating ? { animation: 'dot-shrink 0.2s ease-in forwards' } : {}}
-          />
-        </div>
-      )}
-      {(isActive || isAnimating) && (
-        <div
-          className="absolute top-0 bottom-0 right-0 w-1 bg-[#00a676]"
-          style={isAnimating ? { animation: 'bar-grow 0.3s ease-out forwards', transformOrigin: 'top' } : {}}
-          onAnimationEnd={() => setIsAnimating(false)}
-        />
+      {isActive && (
+        <div className="absolute top-0 bottom-0 right-0 w-1 bg-[#00a676]" />
       )}
       <div className="absolute bottom-0 left-0 -right-1 h-[2px] bg-white" />
     </div>
