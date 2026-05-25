@@ -81,8 +81,8 @@ describe('Settings', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
-  it('does not navigate when PUT fails', async () => {
-    mockApi.put.mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+  it('does not navigate when PUT throws (server error)', async () => {
+    mockApi.put.mockRejectedValueOnce(new Error('HTTP 500'))
     render(<Settings />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /submit/i }))
