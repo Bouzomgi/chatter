@@ -10,7 +10,7 @@ const createConversationSchema = z.object({
 })
 
 const createMessageSchema = z.object({
-  body: z.string().min(1).transform(s => s.trim()).refine(s => s.length > 0, { message: 'body is required' }),
+  body: z.string().min(1).max(4000).transform(s => s.trim()).refine(s => s.length > 0, { message: 'body is required' }),
 })
 
 const messagesQuerySchema = z.object({

@@ -119,6 +119,10 @@ export function useChat() {
     userRef.current = user
   }, [user])
 
+  // Auto-select the first conversation once on initial load. The ref prevents
+  // re-selection after the user manually navigates away. The effect re-runs on
+  // every conversations update but the ref guards make the body a no-op after
+  // the first selection fires.
   useEffect(() => {
     if (!hasAutoSelectedRef.current && state.conversations.length > 0 && state.activeConversationId === null) {
       hasAutoSelectedRef.current = true
