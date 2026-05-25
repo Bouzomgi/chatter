@@ -5,6 +5,8 @@ import express, { Express } from 'express'
 import cookieParser from 'cookie-parser'
 import { Server } from 'socket.io'
 import { rateLimit } from 'express-rate-limit'
+import { pinoHttp } from 'pino-http'
+import logger from './lib/logger.js'
 import authRouter from './routes/auth.js'
 import { createConversationsRouter } from './routes/conversations.js'
 import usersRouter from './routes/users.js'
@@ -20,6 +22,7 @@ const authLimiter = rateLimit({
 export function createApp(): { app: Express; httpServer: http.Server; io: Server } {
   const app = express()
 
+  app.use(pinoHttp({ logger }))
   app.use(express.json())
   app.use(cookieParser())
 
