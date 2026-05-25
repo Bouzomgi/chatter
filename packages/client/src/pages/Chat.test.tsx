@@ -27,7 +27,12 @@ vi.mock('../context/auth.js', () => ({
 
 vi.mock('../lib/api.js', () => ({
   api: {
-    get: vi.fn(() => Promise.resolve({ json: () => Promise.resolve([]) })),
+    get: vi.fn((path: string) => {
+      const body = path.includes('/messages')
+        ? { messages: [], hasMore: false }
+        : []
+      return Promise.resolve({ json: () => Promise.resolve(body) })
+    }),
     post: vi.fn(() => Promise.resolve({ json: () => Promise.resolve({}) })),
     patch: vi.fn(() => Promise.resolve()),
   },

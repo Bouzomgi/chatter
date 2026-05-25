@@ -5,6 +5,8 @@ import { formatMessageTimestamp } from '../../lib/formatTimestamp.js'
 interface Props {
   messages: Message[]
   currentUserId: string
+  hasMore?: boolean
+  onLoadMore?: () => void
 }
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
@@ -26,26 +28,55 @@ function addSpacing(prev: Message | undefined, curr: Message): boolean {
   return senderChanged || gap >= THIRTY_SECONDS_MS
 }
 
-export default function MessageThread({ messages, currentUserId }: Props) {
+export default function MessageThread({ messages, currentUserId, hasMore, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const firstMsgIdRef = useRef<string | undefined>(undefined)
+  const prevScrollHeightRef = useRef<number | null>(null)
+  const isLoadingMoreRef = useRef(false)
 
   useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
     const firstId = messages[0]?.id
+
+    if (prevScrollHeightRef.current !== null) {
+      // Restore position after prepend so the viewport doesn't jump
+      el.scrollTop = el.scrollHeight - prevScrollHeightRef.current
+      prevScrollHeightRef.current = null
+      isLoadingMoreRef.current = false
+      firstMsgIdRef.current = firstId
+      return
+    }
+
     if (firstId !== firstMsgIdRef.current) {
       firstMsgIdRef.current = firstId
       bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
     } else {
-      const el = containerRef.current
-      if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
       }
     }
   }, [messages])
 
+  function handleScroll() {
+    const el = containerRef.current
+    if (!el || !hasMore || !onLoadMore || isLoadingMoreRef.current) return
+    if (el.scrollTop < 100) {
+      isLoadingMoreRef.current = true
+      prevScrollHeightRef.current = el.scrollHeight
+      onLoadMore()
+    }
+  }
+
   return (
-    <div ref={containerRef} data-testid="message-thread" className="flex-1 overflow-y-auto py-4">
+    <div
+      ref={containerRef}
+      data-testid="message-thread"
+      className="flex-1 overflow-y-auto py-4"
+      onScroll={handleScroll}
+    >
       <div className="w-[93%] mx-auto flex flex-col gap-1">
         {messages.map((msg, i) => {
           const prev = messages[i - 1]

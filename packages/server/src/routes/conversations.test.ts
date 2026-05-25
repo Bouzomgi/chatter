@@ -235,3 +235,139 @@ describe('POST /conversations/:id/messages', () => {
     expect(res.body.createdAt).toBeDefined()
   })
 })
+
+describe('GET /conversations/:id/messages', () => {
+  it('requires auth', async () => {
+    const res = await request(app).get('/conversations/fake-id/messages')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 for unknown conversation', async () => {
+    const alice = await loginAs('alice@example.com')
+    const res = await request(app)
+      .get('/conversations/nonexistent-id/messages')
+      .set('Cookie', alice.cookie)
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 403 when user is not a participant', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+    const carol = await loginAs('carol@example.com')
+
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', bob.cookie)
+      .send({ targetUserId: carol.user.id })
+    const conversationId = convoRes.body.id
+
+    const res = await request(app)
+      .get(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+    expect(res.status).toBe(403)
+  })
+
+  it('returns messages and hasMore=false when all messages fit in the limit', async () => {
+    const alice = await loginAs('alice@example.com')
+    const convos = await request(app).get('/conversations').set('Cookie', alice.cookie)
+    const conversationId = convos.body[0].id
+
+    const res = await request(app)
+      .get(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+
+    expect(res.status).toBe(200)
+    expect(Array.isArray(res.body.messages)).toBe(true)
+    expect(typeof res.body.hasMore).toBe('boolean')
+    expect(res.body.hasMore).toBe(false)
+  })
+
+  it('returns messages in ascending createdAt order', async () => {
+    const alice = await loginAs('alice@example.com')
+    const convos = await request(app).get('/conversations').set('Cookie', alice.cookie)
+    const conversationId = convos.body[0].id
+
+    const res = await request(app)
+      .get(`/conversations/${conversationId}/messages`)
+      .set('Cookie', alice.cookie)
+
+    const times = res.body.messages.map((m: { createdAt: string }) => new Date(m.createdAt).getTime())
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i]).toBeGreaterThanOrEqual(times[i - 1])
+    }
+  })
+
+  it('respects the limit param and sets hasMore=true', async () => {
+    const unique = Date.now().toString()
+    const u1Res = await request(app).post('/auth/register').send({ username: `u1${unique}`, email: `u1${unique}@test.com`, password: 'pw' })
+    const u2Res = await request(app).post('/auth/register').send({ username: `u2${unique}`, email: `u2${unique}@test.com`, password: 'pw' })
+    const cookie = u1Res.headers['set-cookie'][0] as string
+
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ targetUserId: u2Res.body.id })
+    const conversationId = convoRes.body.id
+
+    for (const body of ['msg1', 'msg2', 'msg3']) {
+      await request(app).post(`/conversations/${conversationId}/messages`).set('Cookie', cookie).send({ body })
+    }
+
+    const res = await request(app)
+      .get(`/conversations/${conversationId}/messages?limit=2`)
+      .set('Cookie', cookie)
+
+    expect(res.status).toBe(200)
+    expect(res.body.messages).toHaveLength(2)
+    expect(res.body.hasMore).toBe(true)
+    expect(res.body.messages[0].body).toBe('msg2')
+    expect(res.body.messages[1].body).toBe('msg3')
+  }, 15000)
+
+  it('paginates correctly using the before cursor', async () => {
+    const unique = (Date.now() + 1).toString()
+    const u1Res = await request(app).post('/auth/register').send({ username: `pa1${unique}`, email: `pa1${unique}@test.com`, password: 'pw' })
+    const u2Res = await request(app).post('/auth/register').send({ username: `pa2${unique}`, email: `pa2${unique}@test.com`, password: 'pw' })
+    const cookie = u1Res.headers['set-cookie'][0] as string
+
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ targetUserId: u2Res.body.id })
+    const conversationId = convoRes.body.id
+
+    for (const body of ['a', 'b', 'c']) {
+      await request(app).post(`/conversations/${conversationId}/messages`).set('Cookie', cookie).send({ body })
+    }
+
+    // Get last 2 messages (b, c)
+    const firstPage = await request(app)
+      .get(`/conversations/${conversationId}/messages?limit=2`)
+      .set('Cookie', cookie)
+
+    expect(firstPage.body.hasMore).toBe(true)
+    const oldest = firstPage.body.messages[0]
+
+    // Fetch the page before the oldest (should return just 'a')
+    const secondPage = await request(app)
+      .get(`/conversations/${conversationId}/messages?limit=2&before=${oldest.id}`)
+      .set('Cookie', cookie)
+
+    expect(secondPage.status).toBe(200)
+    expect(secondPage.body.messages).toHaveLength(1)
+    expect(secondPage.body.messages[0].body).toBe('a')
+    expect(secondPage.body.hasMore).toBe(false)
+  }, 15000)
+
+  it('returns 400 for an invalid before cursor', async () => {
+    const alice = await loginAs('alice@example.com')
+    const convos = await request(app).get('/conversations').set('Cookie', alice.cookie)
+    const conversationId = convos.body[0].id
+
+    const res = await request(app)
+      .get(`/conversations/${conversationId}/messages?before=nonexistent-msg-id`)
+      .set('Cookie', alice.cookie)
+
+    expect(res.status).toBe(400)
+  })
+})
