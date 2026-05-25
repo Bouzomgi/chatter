@@ -14,6 +14,7 @@ interface State {
   users: UserSummary[]
   activeConversationId: string | null
   showUserList: boolean
+  loaded: boolean
 }
 
 type Action =
@@ -36,7 +37,7 @@ function byLatestMessage(a: Conversation, b: Conversation) {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_CONVERSATIONS':
-      return { ...state, conversations: [...action.conversations].sort(byLatestMessage) }
+      return { ...state, conversations: [...action.conversations].sort(byLatestMessage), loaded: true }
     case 'SET_MESSAGES':
       return { ...state, messages: { ...state.messages, [action.conversationId]: action.messages } }
     case 'APPEND_MESSAGE': {
@@ -90,6 +91,7 @@ const initialState: State = {
   users: [],
   activeConversationId: null,
   showUserList: false,
+  loaded: false,
 }
 
 export default function Chat() {
@@ -199,11 +201,11 @@ export default function Chat() {
             )}
             <MessageInput onSend={sendMessage} />
           </>
-        ) : (
+        ) : state.loaded ? (
           <div className="flex-1 flex items-center justify-center text-gray-400 text-[18px]">
             select a conversation
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
