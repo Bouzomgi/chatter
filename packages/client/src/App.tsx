@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/auth.js'
 import { SocketProvider } from './context/socket.js'
+import ErrorBoundary from './components/ErrorBoundary.js'
 import Header from './components/layout/Header.js'
 import Login from './pages/Login.js'
 import Register from './pages/Register.js'
@@ -33,18 +34,20 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <SocketProvider>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Header />
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <Routes>
-                <Route element={<GuestRoute />}>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                </Route>
-                <Route path="/*" element={<ProtectedLayout />} />
-              </Routes>
+          <ErrorBoundary>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <Header />
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <Routes>
+                  <Route element={<GuestRoute />}>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                  </Route>
+                  <Route path="/*" element={<ProtectedLayout />} />
+                </Routes>
+              </div>
             </div>
-          </div>
+          </ErrorBoundary>
         </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
