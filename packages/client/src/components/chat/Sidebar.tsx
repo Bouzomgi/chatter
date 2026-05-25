@@ -33,7 +33,7 @@ export default function Sidebar({
           ? users.map(u => (
               <UserItem key={u.id} user={u} onClick={() => onSelectUser(u)} />
             ))
-          : conversations.filter(c => c.latestMessage).map(c => (
+          : conversations.map(c => (
               <ConversationItem
                 key={c.id}
                 conversation={c}
