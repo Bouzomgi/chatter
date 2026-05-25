@@ -142,6 +142,15 @@ export function useChat() {
       .then(r => r.json())
       .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
 
+    function refetchConversations() {
+      api.get('/conversations')
+        .then(r => r.json())
+        .then((conversations: Conversation[]) => dispatch({ type: 'SET_CONVERSATIONS', conversations }))
+    }
+
+    // Re-fetch on reconnect so conversations created while disconnected become visible.
+    socket.io.on('reconnect', refetchConversations)
+
     function onMessageNew(message: Message) {
       dispatch({ type: 'APPEND_MESSAGE', message })
       if (message.conversationId === activeConvRef.current) {
@@ -155,6 +164,7 @@ export function useChat() {
 
     return () => {
       socket.off('message:new', onMessageNew)
+      socket.io.off('reconnect', refetchConversations)
       setActiveConversationId(null)
     }
   // Intentionally runs once on mount; setActiveConversationId is stable

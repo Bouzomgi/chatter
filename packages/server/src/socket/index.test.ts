@@ -118,6 +118,54 @@ describe('Socket.io auth', () => {
     }))
 })
 
+describe('Socket.io reconnect', () => {
+  it('re-joins conversation rooms after reconnect so messages created during gap are received', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    // Alice connects before the conversation exists
+    const aliceSocket = connectWithCookie(alice.cookie)
+    await new Promise<void>((resolve, reject) => {
+      aliceSocket.on('connect', resolve)
+      aliceSocket.on('connect_error', reject)
+      aliceSocket.connect()
+    })
+
+    // Bob creates a conversation with Alice (after Alice connected — she won't be in the room yet)
+    const convoRes = await request(app)
+      .post('/conversations')
+      .set('Cookie', bob.cookie)
+      .send({ targetUserId: alice.user.id })
+    const conversationId = convoRes.body.id
+
+    // Alice disconnects and reconnects — server should re-join her to all rooms including the new one
+    await new Promise<void>(resolve => {
+      aliceSocket.once('disconnect', () => resolve())
+      aliceSocket.disconnect()
+    })
+    await new Promise<void>((resolve, reject) => {
+      aliceSocket.once('connect', resolve)
+      aliceSocket.once('connect_error', reject)
+      aliceSocket.connect()
+    })
+
+    const messagePromise = waitFor<Record<string, unknown>>(aliceSocket, 'message:new')
+
+    await request(app)
+      .post(`/conversations/${conversationId}/messages`)
+      .set('Cookie', bob.cookie)
+      .send({ body: 'Did you get this after reconnect?' })
+
+    const received = await messagePromise
+    expect(received).toMatchObject({
+      conversationId,
+      body: 'Did you get this after reconnect?',
+    })
+
+    aliceSocket.disconnect()
+  })
+})
+
 describe('Socket.io message:new delivery', () => {
   it('delivers message:new to connected participant after REST POST', async () => {
     const alice = await loginAs('alice@example.com')
