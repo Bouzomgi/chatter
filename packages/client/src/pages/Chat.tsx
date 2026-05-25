@@ -11,6 +11,7 @@ import MessageInput from '../components/chat/MessageInput.js'
 interface State {
   conversations: Conversation[]
   messages: Record<string, Message[]>
+  hasMore: Record<string, boolean>
   users: UserSummary[]
   activeConversationId: string | null
   showUserList: boolean
@@ -19,7 +20,8 @@ interface State {
 
 type Action =
   | { type: 'SET_CONVERSATIONS'; conversations: Conversation[] }
-  | { type: 'SET_MESSAGES'; conversationId: string; messages: Message[] }
+  | { type: 'SET_MESSAGES'; conversationId: string; messages: Message[]; hasMore: boolean }
+  | { type: 'PREPEND_MESSAGES'; conversationId: string; messages: Message[]; hasMore: boolean }
   | { type: 'APPEND_MESSAGE'; message: Message }
   | { type: 'SET_USERS'; users: UserSummary[] }
   | { type: 'SET_ACTIVE'; conversationId: string }
@@ -39,7 +41,20 @@ function reducer(state: State, action: Action): State {
     case 'SET_CONVERSATIONS':
       return { ...state, conversations: [...action.conversations].sort(byLatestMessage), loaded: true }
     case 'SET_MESSAGES':
-      return { ...state, messages: { ...state.messages, [action.conversationId]: action.messages } }
+      return {
+        ...state,
+        messages: { ...state.messages, [action.conversationId]: action.messages },
+        hasMore: { ...state.hasMore, [action.conversationId]: action.hasMore },
+      }
+    case 'PREPEND_MESSAGES':
+      return {
+        ...state,
+        messages: {
+          ...state.messages,
+          [action.conversationId]: [...action.messages, ...(state.messages[action.conversationId] ?? [])],
+        },
+        hasMore: { ...state.hasMore, [action.conversationId]: action.hasMore },
+      }
     case 'APPEND_MESSAGE': {
       const existing = state.messages[action.message.conversationId] ?? []
       const updated = state.conversations.map(c =>
@@ -88,6 +103,7 @@ function reducer(state: State, action: Action): State {
 const initialState: State = {
   conversations: [],
   messages: {},
+  hasMore: {},
   users: [],
   activeConversationId: null,
   showUserList: false,
@@ -130,10 +146,16 @@ export default function Chat() {
     }
   }, [])
 
+  async function fetchMessages(id: string) {
+    const data: { messages: Message[]; hasMore: boolean } = await api
+      .get(`/conversations/${id}/messages`)
+      .then(r => r.json())
+    dispatch({ type: 'SET_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
+  }
+
   async function selectConversation(id: string) {
     if (!state.messages[id]) {
-      const messages: Message[] = await api.get(`/conversations/${id}/messages`).then(r => r.json())
-      dispatch({ type: 'SET_MESSAGES', conversationId: id, messages })
+      await fetchMessages(id)
     }
     dispatch({ type: 'SET_ACTIVE', conversationId: id })
     dispatch({ type: 'MARK_READ', conversationId: id })
@@ -142,15 +164,22 @@ export default function Chat() {
     api.patch(`/conversations/${id}/read`)
   }
 
+  async function loadMore(id: string) {
+    const msgs = state.messages[id] ?? []
+    const oldest = msgs[0]
+    if (!oldest) return
+    const data: { messages: Message[]; hasMore: boolean } = await api
+      .get(`/conversations/${id}/messages?before=${oldest.id}`)
+      .then(r => r.json())
+    dispatch({ type: 'PREPEND_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
+  }
+
   async function selectUser(u: UserSummary) {
     const conversation: Conversation = await api
       .post('/conversations', { targetUserId: u.id })
       .then(r => r.json())
     if (!state.messages[conversation.id]) {
-      const messages: Message[] = await api
-        .get(`/conversations/${conversation.id}/messages`)
-        .then(r => r.json())
-      dispatch({ type: 'SET_MESSAGES', conversationId: conversation.id, messages })
+      await fetchMessages(conversation.id)
     }
     dispatch({ type: 'UPSERT_CONVERSATION', conversation })
     activeConvRef.current = conversation.id
@@ -176,6 +205,10 @@ export default function Chat() {
     ? (state.messages[state.activeConversationId] ?? null)
     : null
 
+  const activeHasMore = state.activeConversationId
+    ? (state.hasMore[state.activeConversationId] ?? false)
+    : false
+
   const activeConversation = state.conversations.find(c => c.id === state.activeConversationId)
 
   return (
@@ -197,7 +230,12 @@ export default function Chat() {
               <span className="text-[18px] font-semibold">{activeConversation.otherUser.username}</span>
             </div>
             {activeMessages !== null && (
-              <MessageThread messages={activeMessages} currentUserId={user!.id} />
+              <MessageThread
+                messages={activeMessages}
+                currentUserId={user!.id}
+                hasMore={activeHasMore}
+                onLoadMore={() => loadMore(state.activeConversationId!)}
+              />
             )}
             <MessageInput onSend={sendMessage} />
           </>

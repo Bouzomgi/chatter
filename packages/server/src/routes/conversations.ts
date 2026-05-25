@@ -13,6 +13,11 @@ const createMessageSchema = z.object({
   body: z.string().min(1).transform(s => s.trim()).refine(s => s.length > 0, { message: 'body is required' }),
 })
 
+const messagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().optional(),
+})
+
 export function createConversationsRouter(io: Server): ExpressRouter {
   const router = Router()
 
@@ -133,12 +138,28 @@ export function createConversationsRouter(io: Server): ExpressRouter {
       return
     }
 
-    const messages = await prisma.message.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'asc' },
+    const { limit, before } = messagesQuerySchema.parse(req.query)
+
+    let createdAtFilter: { lt: Date } | undefined
+    if (before) {
+      const cursorMsg = await prisma.message.findUnique({ where: { id: before } })
+      if (!cursorMsg) {
+        res.status(400).json({ error: 'Invalid cursor' })
+        return
+      }
+      createdAtFilter = { lt: cursorMsg.createdAt }
+    }
+
+    const batch = await prisma.message.findMany({
+      where: { conversationId, ...(createdAtFilter ? { createdAt: createdAtFilter } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
     })
 
-    res.json(messages)
+    const hasMore = batch.length > limit
+    const messages = batch.slice(0, limit).reverse()
+
+    res.json({ messages, hasMore })
   })
 
   router.post('/:id/messages', requireAuth, async (req, res) => {
