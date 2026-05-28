@@ -6,10 +6,11 @@ import { formatConversationTime } from '../../lib/formatTimestamp.js'
 interface Props {
   conversation: Conversation
   isActive: boolean
+  isOnline: boolean
   onClick: () => void
 }
 
-export default function ConversationItem({ conversation, isActive, onClick }: Props) {
+export default function ConversationItem({ conversation, isActive, isOnline, onClick }: Props) {
   const { otherUser, latestMessage, unread } = conversation
   const prevIsActiveRef = useRef(isActive)
   const prevUnreadRef = useRef(unread)
@@ -38,7 +39,7 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
       aria-label={`Conversation with ${otherUser.username}${unread ? ', unread' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
+      className="relative flex items-center gap-3 pl-8 pr-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
     >
       {(unread || isAnimating) && (
         <div className="absolute left-2 top-1/2 -translate-y-1/2">
@@ -49,11 +50,13 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
           />
         </div>
       )}
-      <img
-        src={getAvatarSrc(otherUser.avatarIndex)}
-        alt={otherUser.username}
-        className="h-12 w-12 rounded-full shrink-0"
-      />
+      <div className="relative shrink-0">
+        <img
+          src={getAvatarSrc(otherUser.avatarIndex)}
+          alt={otherUser.username}
+          className="h-12 w-12 rounded-full"
+        />
+      </div>
       <div className="flex flex-col overflow-hidden flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <span className="font-bold text-[16px] truncate">{otherUser.username}</span>

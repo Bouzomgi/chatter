@@ -26,28 +26,28 @@ describe('ConversationItem timestamp', () => {
 
   it('shows no timestamp when there is no latest message', () => {
     const { queryByText } = render(
-      <ConversationItem conversation={base} isActive={false} onClick={() => {}} />
+      <ConversationItem conversation={base} isActive={false} isOnline={false} onClick={() => {}} />
     )
     expect(queryByText(/AM|PM|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|\d+\/\d+/)).toBeNull()
   })
 
   it('shows time for a same-day message', () => {
     const { getByText } = render(
-      <ConversationItem conversation={makeConv('2026-05-24T10:00:00.000Z')} isActive={false} onClick={() => {}} />
+      <ConversationItem conversation={makeConv('2026-05-24T10:00:00.000Z')} isActive={false} isOnline={false} onClick={() => {}} />
     )
     expect(getByText('10:00 AM')).toBeTruthy()
   })
 
   it('shows weekday for a message earlier this week', () => {
     const { getByText } = render(
-      <ConversationItem conversation={makeConv('2026-05-23T10:00:00.000Z')} isActive={false} onClick={() => {}} />
+      <ConversationItem conversation={makeConv('2026-05-23T10:00:00.000Z')} isActive={false} isOnline={false} onClick={() => {}} />
     )
     expect(getByText('Saturday')).toBeTruthy()
   })
 
   it('shows short date for a message 7+ days old', () => {
     const { getByText } = render(
-      <ConversationItem conversation={makeConv('2026-05-17T10:00:00.000Z')} isActive={false} onClick={() => {}} />
+      <ConversationItem conversation={makeConv('2026-05-17T10:00:00.000Z')} isActive={false} isOnline={false} onClick={() => {}} />
     )
     expect(getByText('5/17/26')).toBeTruthy()
   })
