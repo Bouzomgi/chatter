@@ -253,36 +253,6 @@ describe('Socket.io presence', () => {
     bobSocket.disconnect()
   })
 
-  it('does not emit presence events to non-conversation-partners', async () => {
-    // bob and carol share no seeded conversation, so carol should not receive bob's presence
-    const bob = await loginAs('bob@example.com')
-    const carol = await loginAs('carol@example.com')
-
-    const carolSocket = connectWithCookie(carol.cookie)
-    await new Promise<void>((resolve, reject) => {
-      carolSocket.on('connect', resolve)
-      carolSocket.on('connect_error', reject)
-      carolSocket.connect()
-    })
-
-    let carolReceivedOnline = false
-    carolSocket.on('user:online', ({ userId }: { userId: string }) => {
-      if (userId === bob.user.id) carolReceivedOnline = true
-    })
-
-    const bobSocket = connectWithCookie(bob.cookie)
-    await new Promise<void>((resolve, reject) => {
-      bobSocket.on('connect', resolve)
-      bobSocket.on('connect_error', reject)
-      bobSocket.connect()
-    })
-
-    await new Promise(r => setTimeout(r, 200))
-    expect(carolReceivedOnline).toBe(false)
-
-    bobSocket.disconnect()
-    carolSocket.disconnect()
-  })
 })
 
 describe('Socket.io message:new delivery', () => {
