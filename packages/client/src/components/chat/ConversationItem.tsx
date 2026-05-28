@@ -39,7 +39,7 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
       aria-label={`Conversation with ${otherUser.username}${unread ? ', unread' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className="relative flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
+      className="relative flex items-center gap-3 pl-8 pr-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
     >
       {(unread || isAnimating) && (
         <div className="absolute left-2 top-1/2 -translate-y-1/2">
@@ -56,12 +56,6 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
           alt={otherUser.username}
           className="h-12 w-12 rounded-full"
         />
-        {isOnline && (
-          <span
-            className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#00a676] ring-2 ring-white"
-            aria-label="Online"
-          />
-        )}
       </div>
       <div className="flex flex-col overflow-hidden flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
