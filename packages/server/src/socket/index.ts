@@ -39,5 +39,29 @@ export function registerSocketHandlers(io: Server) {
     for (const { conversationId } of participants) {
       socket.join(conversationId)
     }
+
+    const rooms = [...socket.rooms].filter(r => r !== socket.id)
+
+    if (rooms.length > 0) {
+      socket.to(rooms).emit('user:online', { userId: socket.data.userId })
+    }
+
+    const onlineInRooms = new Set<string>()
+    for (const roomId of rooms) {
+      const sockets = await io.in(roomId).fetchSockets()
+      for (const s of sockets) {
+        if (s.data.userId && s.data.userId !== socket.data.userId) {
+          onlineInRooms.add(s.data.userId)
+        }
+      }
+    }
+    socket.emit('presence:init', { onlineUserIds: [...onlineInRooms] })
+
+    socket.on('disconnecting', () => {
+      const disconnectRooms = [...socket.rooms].filter(r => r !== socket.id)
+      if (disconnectRooms.length > 0) {
+        socket.to(disconnectRooms).emit('user:offline', { userId: socket.data.userId })
+      }
+    })
   })
 }

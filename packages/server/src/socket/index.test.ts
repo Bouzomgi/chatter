@@ -166,6 +166,125 @@ describe('Socket.io reconnect', () => {
   })
 })
 
+describe('Socket.io presence', () => {
+  it('emits user:online to conversation partners when a user connects', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    await request(app)
+      .post('/conversations')
+      .set('Cookie', alice.cookie)
+      .send({ targetUserId: bob.user.id })
+
+    const aliceSocket = connectWithCookie(alice.cookie)
+    await new Promise<void>((resolve, reject) => {
+      aliceSocket.on('connect', resolve)
+      aliceSocket.on('connect_error', reject)
+      aliceSocket.connect()
+    })
+
+    const bobSocket = connectWithCookie(bob.cookie)
+    const onlinePromise = waitFor<{ userId: string }>(aliceSocket, 'user:online')
+
+    await new Promise<void>((resolve, reject) => {
+      bobSocket.on('connect', resolve)
+      bobSocket.on('connect_error', reject)
+      bobSocket.connect()
+    })
+
+    const { userId } = await onlinePromise
+    expect(userId).toBe(bob.user.id)
+
+    aliceSocket.disconnect()
+    bobSocket.disconnect()
+  })
+
+  it('emits user:offline to conversation partners when a user disconnects', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    await request(app)
+      .post('/conversations')
+      .set('Cookie', alice.cookie)
+      .send({ targetUserId: bob.user.id })
+
+    const aliceSocket = connectWithCookie(alice.cookie)
+    const bobSocket = connectWithCookie(bob.cookie)
+
+    await Promise.all([
+      new Promise<void>((resolve, reject) => { aliceSocket.on('connect', resolve); aliceSocket.on('connect_error', reject); aliceSocket.connect() }),
+      new Promise<void>((resolve, reject) => { bobSocket.on('connect', resolve); bobSocket.on('connect_error', reject); bobSocket.connect() }),
+    ])
+
+    const offlinePromise = waitFor<{ userId: string }>(aliceSocket, 'user:offline')
+    bobSocket.disconnect()
+
+    const { userId } = await offlinePromise
+    expect(userId).toBe(bob.user.id)
+
+    aliceSocket.disconnect()
+  })
+
+  it('emits presence:init with already-online partners when connecting', async () => {
+    const alice = await loginAs('alice@example.com')
+    const bob = await loginAs('bob@example.com')
+
+    await request(app)
+      .post('/conversations')
+      .set('Cookie', alice.cookie)
+      .send({ targetUserId: bob.user.id })
+
+    const aliceSocket = connectWithCookie(alice.cookie)
+    await new Promise<void>((resolve, reject) => {
+      aliceSocket.on('connect', resolve)
+      aliceSocket.on('connect_error', reject)
+      aliceSocket.connect()
+    })
+
+    const bobSocket = connectWithCookie(bob.cookie)
+    const initPromise = waitFor<{ onlineUserIds: string[] }>(bobSocket, 'presence:init')
+
+    bobSocket.connect()
+
+    const { onlineUserIds } = await initPromise
+    expect(onlineUserIds).toContain(alice.user.id)
+
+    aliceSocket.disconnect()
+    bobSocket.disconnect()
+  })
+
+  it('does not emit presence events to non-conversation-partners', async () => {
+    // bob and carol share no seeded conversation, so carol should not receive bob's presence
+    const bob = await loginAs('bob@example.com')
+    const carol = await loginAs('carol@example.com')
+
+    const carolSocket = connectWithCookie(carol.cookie)
+    await new Promise<void>((resolve, reject) => {
+      carolSocket.on('connect', resolve)
+      carolSocket.on('connect_error', reject)
+      carolSocket.connect()
+    })
+
+    let carolReceivedOnline = false
+    carolSocket.on('user:online', ({ userId }: { userId: string }) => {
+      if (userId === bob.user.id) carolReceivedOnline = true
+    })
+
+    const bobSocket = connectWithCookie(bob.cookie)
+    await new Promise<void>((resolve, reject) => {
+      bobSocket.on('connect', resolve)
+      bobSocket.on('connect_error', reject)
+      bobSocket.connect()
+    })
+
+    await new Promise(r => setTimeout(r, 200))
+    expect(carolReceivedOnline).toBe(false)
+
+    bobSocket.disconnect()
+    carolSocket.disconnect()
+  })
+})
+
 describe('Socket.io message:new delivery', () => {
   it('delivers message:new to connected participant after REST POST', async () => {
     const alice = await loginAs('alice@example.com')

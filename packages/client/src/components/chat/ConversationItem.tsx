@@ -6,10 +6,11 @@ import { formatConversationTime } from '../../lib/formatTimestamp.js'
 interface Props {
   conversation: Conversation
   isActive: boolean
+  isOnline: boolean
   onClick: () => void
 }
 
-export default function ConversationItem({ conversation, isActive, onClick }: Props) {
+export default function ConversationItem({ conversation, isActive, isOnline, onClick }: Props) {
   const { otherUser, latestMessage, unread } = conversation
   const prevIsActiveRef = useRef(isActive)
   const prevUnreadRef = useRef(unread)
@@ -49,11 +50,19 @@ export default function ConversationItem({ conversation, isActive, onClick }: Pr
           />
         </div>
       )}
-      <img
-        src={getAvatarSrc(otherUser.avatarIndex)}
-        alt={otherUser.username}
-        className="h-12 w-12 rounded-full shrink-0"
-      />
+      <div className="relative shrink-0">
+        <img
+          src={getAvatarSrc(otherUser.avatarIndex)}
+          alt={otherUser.username}
+          className="h-12 w-12 rounded-full"
+        />
+        {isOnline && (
+          <span
+            className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[#00a676] ring-2 ring-white"
+            aria-label="Online"
+          />
+        )}
+      </div>
       <div className="flex flex-col overflow-hidden flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <span className="font-bold text-[16px] truncate">{otherUser.username}</span>

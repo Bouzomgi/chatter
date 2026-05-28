@@ -8,6 +8,7 @@ interface Props {
   users: UserSummary[]
   activeConversationId: string | null
   showUserList: boolean
+  onlineUserIds: Set<string>
   onSelectConversation: (id: string) => void
   onSelectUser: (user: UserSummary) => void
   onToggleUserList: () => void
@@ -18,6 +19,7 @@ export default function Sidebar({
   users,
   activeConversationId,
   showUserList,
+  onlineUserIds,
   onSelectConversation,
   onSelectUser,
   onToggleUserList,
@@ -48,6 +50,7 @@ export default function Sidebar({
                 key={c.id}
                 conversation={c}
                 isActive={c.id === activeConversationId}
+                isOnline={onlineUserIds.has(c.otherUser.id)}
                 onClick={() => onSelectConversation(c.id)}
               />
             ))}

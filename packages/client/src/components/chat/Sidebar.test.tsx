@@ -36,6 +36,7 @@ const baseProps = {
   users,
   activeConversationId: null,
   showUserList: false,
+  onlineUserIds: new Set<string>(),
   onSelectConversation: vi.fn(),
   onSelectUser: vi.fn(),
   onToggleUserList: vi.fn(),
