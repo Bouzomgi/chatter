@@ -32,7 +32,7 @@ function issueToken(userId: string): string {
 router.post('/register', async (req, res) => {
   const parsed = registerSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'username, email and password are required' })
+    res.status(400).json({ error: 'all fields required' })
     return
   }
   const { username, email, password } = parsed.data
@@ -41,7 +41,7 @@ router.post('/register', async (req, res) => {
     where: { OR: [{ username }, { email }] },
   })
   if (existing) {
-    res.status(409).json({ error: 'Username or email already taken' })
+    res.status(409).json({ error: 'username or email taken' })
     return
   }
 
@@ -58,7 +58,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const parsed = loginSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'email and password are required' })
+    res.status(400).json({ error: 'all fields required' })
     return
   }
   const { email, password } = parsed.data

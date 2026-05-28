@@ -25,7 +25,7 @@ export default function Register() {
     setError('')
     setSuccess('')
     if (!form.email || !form.username || !form.password) {
-      setError('All fields are required')
+      setError('all fields required')
       shake()
       return
     }

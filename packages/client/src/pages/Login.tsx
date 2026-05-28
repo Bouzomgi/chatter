@@ -23,7 +23,7 @@ export default function Login() {
   async function submit() {
     setError('')
     if (!form.email || !form.password) {
-      setError('All fields are required')
+      setError('all fields required')
       shake()
       return
     }
