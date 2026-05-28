@@ -57,7 +57,7 @@ describe('Login', () => {
   it('shows error and does not fetch when fields are empty', async () => {
     renderLogin()
     await act(async () => { clickSubmit() })
-    expect(screen.getByText('All fields are required')).toBeDefined()
+    expect(screen.getByText('all fields required')).toBeDefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -65,7 +65,7 @@ describe('Login', () => {
     renderLogin()
     fillForm('user@example.com', '')
     await act(async () => { clickSubmit() })
-    expect(screen.getByText('All fields are required')).toBeDefined()
+    expect(screen.getByText('all fields required')).toBeDefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

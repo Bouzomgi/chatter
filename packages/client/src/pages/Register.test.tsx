@@ -59,7 +59,7 @@ describe('Register', () => {
   it('shows error and does not fetch when all fields are empty', async () => {
     renderRegister()
     await act(async () => { clickSubmit() })
-    expect(screen.getByText('All fields are required')).toBeDefined()
+    expect(screen.getByText('all fields required')).toBeDefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -67,7 +67,7 @@ describe('Register', () => {
     renderRegister()
     fillForm('user@example.com', 'alice', '')
     await act(async () => { clickSubmit() })
-    expect(screen.getByText('All fields are required')).toBeDefined()
+    expect(screen.getByText('all fields required')).toBeDefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
