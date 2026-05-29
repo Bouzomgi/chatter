@@ -63,7 +63,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
         res.json({
           id: existing.id,
           createdAt: existing.createdAt,
-          participants: existing.participants.map(p => p.user),
+          participants: existing.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
         })
         return
       }
@@ -84,7 +84,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     res.status(201).json({
       id: conversation.id,
       createdAt: conversation.createdAt,
-      participants: conversation.participants.map(p => p.user),
+      participants: conversation.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
     })
   })
 
@@ -106,13 +106,14 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     })
 
     const result = conversations
+      .filter(c => c.messages.length > 0)
       .map(c => {
         const myParticipant = c.participants.find(p => p.userId === currentUserId)
         const otherParticipants = c.participants.filter(p => p.userId !== currentUserId)
         return {
           id: c.id,
           createdAt: c.createdAt,
-          participants: otherParticipants.map(p => p.user),
+          participants: otherParticipants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
           latestMessage: c.messages[0] ?? null,
           unread: myParticipant ? !myParticipant.seen : false,
         }

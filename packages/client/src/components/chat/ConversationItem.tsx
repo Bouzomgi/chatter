@@ -53,11 +53,14 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
         </div>
       )}
       <div className="relative shrink-0">
-        <img
-          src={getAvatarSrc(firstParticipant.avatarIndex)}
-          alt={firstParticipant.username}
-          className="h-12 w-12 rounded-full"
-        />
+        {participants.length > 1
+          ? <div className="h-12 w-12 rounded-full bg-[#6b7280]" />
+          : <img
+              src={getAvatarSrc(firstParticipant.avatarIndex)}
+              alt={firstParticipant.username}
+              className="h-12 w-12 rounded-full"
+            />
+        }
       </div>
       <div className="flex flex-col overflow-hidden flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">

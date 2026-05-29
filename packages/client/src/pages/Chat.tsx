@@ -24,7 +24,7 @@ export default function Chat() {
   } = useChat()
 
   const participants = activeConversation?.participants ?? pendingUsers
-  const displayName = participants.map(p => p.username).join(', ')
+  const displayName = [...participants].sort((a, b) => a.username.localeCompare(b.username)).map(p => p.username).join(', ')
   const anyOnline = activeConversation?.participants.some(p => onlineUserIds.has(p.id)) ?? false
 
   return (
