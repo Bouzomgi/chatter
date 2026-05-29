@@ -42,31 +42,28 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     }
 
     const allParticipantIds = [currentUserId, ...participantIds]
-    const isDm = participantIds.length === 1
 
-    // For DMs, return existing conversation if one already exists
-    if (isDm) {
-      const existing = await prisma.conversation.findFirst({
-        where: {
-          AND: allParticipantIds.map(id => ({ participants: { some: { userId: id } } })),
-          participants: { every: { userId: { in: allParticipantIds } } },
+    // Return existing conversation with exact same member set (order-independent)
+    const existing = await prisma.conversation.findFirst({
+      where: {
+        AND: allParticipantIds.map(id => ({ participants: { some: { userId: id } } })),
+        participants: { every: { userId: { in: allParticipantIds } } },
+      },
+      include: {
+        participants: {
+          where: { userId: { in: participantIds } },
+          include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
-        include: {
-          participants: {
-            where: { userId: { in: participantIds } },
-            include: { user: { select: { id: true, username: true, avatarIndex: true } } },
-          },
-        },
+      },
+    })
+
+    if (existing) {
+      res.json({
+        id: existing.id,
+        createdAt: existing.createdAt,
+        participants: existing.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
       })
-
-      if (existing) {
-        res.json({
-          id: existing.id,
-          createdAt: existing.createdAt,
-          participants: existing.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
-        })
-        return
-      }
+      return
     }
 
     const conversation = await prisma.conversation.create({

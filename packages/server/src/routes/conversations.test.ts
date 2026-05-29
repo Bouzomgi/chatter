@@ -75,6 +75,28 @@ describe('POST /conversations', () => {
     expect(res.body.id).toBeDefined()
   })
 
+  it('returns existing group conversation when same members are provided in a different order', async () => {
+    const unique = Date.now().toString()
+    const u1 = await request(app).post('/auth/register').send({ username: `g1${unique}`, email: `g1${unique}@test.com`, password: 'pw123' })
+    const u2 = await request(app).post('/auth/register').send({ username: `g2${unique}`, email: `g2${unique}@test.com`, password: 'pw123' })
+    const u3 = await request(app).post('/auth/register').send({ username: `g3${unique}`, email: `g3${unique}@test.com`, password: 'pw123' })
+    const cookie = u1.headers['set-cookie'][0] as string
+
+    const first = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ participantIds: [u2.body.id, u3.body.id] })
+    expect(first.status).toBe(201)
+
+    // Same members, different order
+    const second = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ participantIds: [u3.body.id, u2.body.id] })
+    expect(second.status).toBe(200)
+    expect(second.body.id).toBe(first.body.id)
+  })
+
   it('creates a new conversation and is idempotent on repeat', async () => {
     const bob = await loginAs('bob@example.com')
     const carol = await loginAs('carol@example.com')
