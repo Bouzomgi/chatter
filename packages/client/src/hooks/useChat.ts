@@ -11,7 +11,7 @@ interface State {
   hasMore: Record<string, boolean>
   users: UserSummary[]
   activeConversationId: string | null
-  pendingUser: UserSummary | null
+  pendingUsers: UserSummary[]
   showUserList: boolean
   loaded: boolean
 }
@@ -25,7 +25,8 @@ type Action =
   | { type: 'SET_ACTIVE'; conversationId: string }
   | { type: 'UPSERT_CONVERSATION'; conversation: Conversation }
   | { type: 'TOGGLE_USER_LIST' }
-  | { type: 'SET_PENDING_USER'; user: UserSummary | null }
+  | { type: 'TOGGLE_PENDING_USER'; user: UserSummary }
+  | { type: 'CLEAR_PENDING_USERS' }
   | { type: 'MARK_UNREAD'; conversationId: string }
   | { type: 'MARK_READ'; conversationId: string }
 
@@ -70,18 +71,27 @@ function reducer(state: State, action: Action): State {
     case 'SET_USERS':
       return { ...state, users: action.users }
     case 'SET_ACTIVE':
-      return { ...state, activeConversationId: action.conversationId, showUserList: false, pendingUser: null }
+      return { ...state, activeConversationId: action.conversationId, showUserList: false, pendingUsers: [] }
     case 'UPSERT_CONVERSATION': {
       const exists = state.conversations.some(c => c.id === action.conversation.id)
       const conversations = exists
         ? state.conversations
         : [...state.conversations, action.conversation].sort(byLatestMessage)
-      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false, pendingUser: null }
+      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false, pendingUsers: [] }
     }
     case 'TOGGLE_USER_LIST':
-      return { ...state, showUserList: !state.showUserList, pendingUser: null }
-    case 'SET_PENDING_USER':
-      return { ...state, pendingUser: action.user, showUserList: false }
+      return { ...state, showUserList: !state.showUserList, pendingUsers: [] }
+    case 'TOGGLE_PENDING_USER': {
+      const exists = state.pendingUsers.some(u => u.id === action.user.id)
+      return {
+        ...state,
+        pendingUsers: exists
+          ? state.pendingUsers.filter(u => u.id !== action.user.id)
+          : [...state.pendingUsers, action.user],
+      }
+    }
+    case 'CLEAR_PENDING_USERS':
+      return { ...state, pendingUsers: [] }
     case 'MARK_UNREAD':
       return {
         ...state,
@@ -107,7 +117,7 @@ const initialState: State = {
   hasMore: {},
   users: [],
   activeConversationId: null,
-  pendingUser: null,
+  pendingUsers: [],
   showUserList: false,
   loaded: false,
 }
@@ -199,13 +209,8 @@ export function useChat() {
     dispatch({ type: 'PREPEND_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
   }
 
-  function selectUser(u: UserSummary) {
-    const existing = state.conversations.find(c => c.otherUser?.id === u.id)
-    if (existing) {
-      selectConversation(existing.id)
-      return
-    }
-    dispatch({ type: 'SET_PENDING_USER', user: u })
+  function togglePendingUser(u: UserSummary) {
+    dispatch({ type: 'TOGGLE_PENDING_USER', user: u })
   }
 
   async function handleToggleUserList() {
@@ -217,9 +222,9 @@ export function useChat() {
   }
 
   async function sendMessage(body: string) {
-    if (state.pendingUser) {
+    if (state.pendingUsers.length > 0) {
       const conversation: Conversation = await api
-        .post('/conversations', { targetUserId: state.pendingUser.id })
+        .post('/conversations', { participantIds: state.pendingUsers.map(u => u.id) })
         .then(r => r.json())
       const message: Message = await api
         .post(`/conversations/${conversation.id}/messages`, { body })
@@ -253,10 +258,10 @@ export function useChat() {
     activeMessages,
     activeHasMore,
     activeConversation,
-    pendingUser: state.pendingUser,
+    pendingUsers: state.pendingUsers,
     selectConversation,
     loadMore,
-    selectUser,
+    togglePendingUser,
     handleToggleUserList,
     sendMessage,
   }

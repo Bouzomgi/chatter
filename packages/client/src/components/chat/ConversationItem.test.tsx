@@ -11,7 +11,7 @@ const NOW = new Date('2026-05-24T15:00:00.000Z')
 const base: Conversation = {
   id: 'c1',
   createdAt: '2026-05-01T00:00:00.000Z',
-  otherUser: { id: 'u2', username: 'bob', avatarIndex: 0 },
+  participants: [{ id: 'u2', username: 'bob', avatarIndex: 0 }],
   latestMessage: null,
   unread: false,
 }

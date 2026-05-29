@@ -15,15 +15,17 @@ export default function Chat() {
     activeMessages,
     activeHasMore,
     activeConversation,
-    pendingUser,
+    pendingUsers,
     selectConversation,
     loadMore,
-    selectUser,
+    togglePendingUser,
     handleToggleUserList,
     sendMessage,
   } = useChat()
 
-  const displayUser = activeConversation?.otherUser ?? pendingUser
+  const participants = activeConversation?.participants ?? pendingUsers
+  const displayName = participants.map(p => p.username).join(', ')
+  const anyOnline = activeConversation?.participants.some(p => onlineUserIds.has(p.id)) ?? false
 
   return (
     <div className="flex h-full w-full" data-socket-connected={socketConnected ? 'true' : 'false'}>
@@ -32,18 +34,19 @@ export default function Chat() {
         users={state.users}
         activeConversationId={state.activeConversationId}
         showUserList={state.showUserList}
+        pendingUserIds={new Set(pendingUsers.map(u => u.id))}
         onlineUserIds={onlineUserIds}
         onSelectConversation={selectConversation}
-        onSelectUser={selectUser}
+        onTogglePendingUser={togglePendingUser}
         onToggleUserList={handleToggleUserList}
       />
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        {displayUser ? (
+        {participants.length > 0 ? (
           <>
             <div className="h-[60px] shrink-0 flex items-center justify-between px-6 border-b-2 border-gray-300 w-[93%] mx-auto">
-              <span className="text-[18px] font-semibold">{displayUser.username}</span>
-              {activeConversation && onlineUserIds.has(activeConversation.otherUser.id) && (
+              <span className="text-[18px] font-semibold">{displayName}</span>
+              {activeConversation && anyOnline && (
                 <span className="text-[13px] text-[#00a676]">Online</span>
               )}
             </div>

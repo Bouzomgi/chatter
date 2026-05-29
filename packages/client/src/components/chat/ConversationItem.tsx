@@ -11,7 +11,9 @@ interface Props {
 }
 
 export default function ConversationItem({ conversation, isActive, isOnline, onClick }: Props) {
-  const { otherUser, latestMessage, unread } = conversation
+  const { participants, latestMessage, unread } = conversation
+  const displayName = participants.map(p => p.username).join(', ')
+  const firstParticipant = participants[0]
   const prevIsActiveRef = useRef(isActive)
   const prevUnreadRef = useRef(unread)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -36,7 +38,7 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
       data-testid="conversation-item"
       role="button"
       tabIndex={0}
-      aria-label={`Conversation with ${otherUser.username}${unread ? ', unread' : ''}`}
+      aria-label={`Conversation with ${displayName}${unread ? ', unread' : ''}`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className="relative flex items-center gap-3 pl-8 pr-4 py-3 cursor-pointer hover:bg-[#e0d0c1cc] overflow-hidden"
@@ -52,14 +54,14 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
       )}
       <div className="relative shrink-0">
         <img
-          src={getAvatarSrc(otherUser.avatarIndex)}
-          alt={otherUser.username}
+          src={getAvatarSrc(firstParticipant.avatarIndex)}
+          alt={firstParticipant.username}
           className="h-12 w-12 rounded-full"
         />
       </div>
       <div className="flex flex-col overflow-hidden flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="font-bold text-[16px] truncate">{otherUser.username}</span>
+          <span className="font-bold text-[16px] truncate">{displayName}</span>
           {latestMessage && (
             <span className="text-[11px] text-gray-400 shrink-0">{formatConversationTime(latestMessage.createdAt)}</span>
           )}
