@@ -59,6 +59,7 @@ function reducer(state: State, action: Action): State {
       }
     case 'APPEND_MESSAGE': {
       const existing = state.messages[action.message.conversationId] ?? []
+      if (existing.some(m => m.id === action.message.id)) return state
       const updated = state.conversations.map(c =>
         c.id === action.message.conversationId
           ? { ...c, latestMessage: { body: action.message.body, senderId: action.message.senderId, createdAt: action.message.createdAt } }
@@ -86,8 +87,8 @@ function reducer(state: State, action: Action): State {
         // entering user list: save current selection and clear it
         return { ...state, showUserList: true, pendingUsers: [], savedConversationId: state.activeConversationId, activeConversationId: null }
       } else {
-        // leaving user list: restore saved selection if no preview was made
-        return { ...state, showUserList: false, pendingUsers: [], activeConversationId: state.activeConversationId ?? state.savedConversationId, savedConversationId: null }
+        // leaving user list: always restore the saved selection
+        return { ...state, showUserList: false, pendingUsers: [], activeConversationId: state.savedConversationId, savedConversationId: null }
       }
     case 'TOGGLE_PENDING_USER': {
       const exists = state.pendingUsers.some(u => u.id === action.user.id)
@@ -275,7 +276,8 @@ export function useChat() {
     }
     const id = state.activeConversationId
     if (!id) return
-    await api.post(`/conversations/${id}/messages`, { body })
+    const message: Message = await api.post(`/conversations/${id}/messages`, { body }).then(r => r.json())
+    dispatch({ type: 'APPEND_MESSAGE', message })
   }
 
   const activeMessages = state.activeConversationId
