@@ -1,3 +1,4 @@
+import { formatParticipantNames } from '../lib/formatParticipantNames.js'
 import { useAuth } from '../context/auth.js'
 import { useSocket } from '../context/socket.js'
 import { useChat } from '../hooks/useChat.js'
@@ -24,7 +25,7 @@ export default function Chat() {
   } = useChat()
 
   const participants = activeConversation?.participants ?? pendingUsers
-  const displayName = [...participants].sort((a, b) => a.username.localeCompare(b.username)).map(p => p.username).join(', ')
+  const displayName = formatParticipantNames(participants.map(p => p.username))
   const anyOnline = activeConversation?.participants.some(p => onlineUserIds.has(p.id)) ?? false
 
   return (
@@ -42,11 +43,15 @@ export default function Chat() {
       />
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        {participants.length > 0 ? (
+        {state.showUserList && pendingUsers.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400 text-[15px]">
+            Select one or more people to start a conversation
+          </div>
+        ) : participants.length > 0 ? (
           <>
             <div className="h-[60px] shrink-0 flex items-center justify-between px-6 border-b-2 border-gray-300 w-[93%] mx-auto">
               <span className="text-[18px] font-semibold">{displayName}</span>
-              {activeConversation && anyOnline && (
+              {activeConversation && !state.showUserList && anyOnline && (
                 <span className="text-[13px] text-[#00a676]">Online</span>
               )}
             </div>
@@ -59,6 +64,7 @@ export default function Chat() {
                 <MessageThread
                   messages={activeMessages}
                   currentUserId={user!.id}
+                  participants={activeConversation?.participants}
                   hasMore={activeHasMore}
                   onLoadMore={() => loadMore(state.activeConversationId!)}
                 />

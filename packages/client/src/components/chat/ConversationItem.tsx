@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Conversation } from '@chatter/shared'
 import { getAvatarSrc } from '../../lib/avatars.js'
 import { formatConversationTime } from '../../lib/formatTimestamp.js'
+import { formatParticipantNames } from '../../lib/formatParticipantNames.js'
 
 interface Props {
   conversation: Conversation
@@ -12,7 +13,7 @@ interface Props {
 
 export default function ConversationItem({ conversation, isActive, isOnline, onClick }: Props) {
   const { participants, latestMessage, unread } = conversation
-  const displayName = participants.map(p => p.username).join(', ')
+  const displayName = formatParticipantNames(participants.map(p => p.username))
   const firstParticipant = participants[0]
   const prevIsActiveRef = useRef(isActive)
   const prevUnreadRef = useRef(unread)
@@ -52,9 +53,38 @@ export default function ConversationItem({ conversation, isActive, isOnline, onC
           />
         </div>
       )}
-      <div className="relative shrink-0">
-        {participants.length > 1
-          ? <div className="h-12 w-12 rounded-full bg-[#6b7280]" />
+      <div className="relative shrink-0 h-12 w-12">
+        {participants.length > 2
+          ? <>
+              <img
+                src={getAvatarSrc(participants[0].avatarIndex)}
+                alt={participants[0].username}
+                className="h-7 w-7 rounded-full absolute top-0 left-1/2 -translate-x-1/2"
+              />
+              <img
+                src={getAvatarSrc(participants[2].avatarIndex)}
+                alt={participants[2].username}
+                className="h-7 w-7 rounded-full absolute bottom-0 right-0"
+              />
+              <img
+                src={getAvatarSrc(participants[1].avatarIndex)}
+                alt={participants[1].username}
+                className="h-7 w-7 rounded-full absolute bottom-0 left-0"
+              />
+            </>
+          : participants.length > 1
+          ? <>
+              <img
+                src={getAvatarSrc(participants[1].avatarIndex)}
+                alt={participants[1].username}
+                className="h-8 w-8 rounded-full absolute bottom-0 right-0"
+              />
+              <img
+                src={getAvatarSrc(participants[0].avatarIndex)}
+                alt={participants[0].username}
+                className="h-8 w-8 rounded-full absolute top-0 left-0"
+              />
+            </>
           : <img
               src={getAvatarSrc(firstParticipant.avatarIndex)}
               alt={firstParticipant.username}
