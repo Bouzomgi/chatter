@@ -20,7 +20,6 @@ vi.mock('../lib/api.js', () => ({ api: mockApi }))
 
 vi.mock('../lib/avatars.js', () => ({
   getAvatarSrc: (index: number) => `/avatars/${index}.png`,
-  getCroppedAvatarSrc: (index: number) => `/avatars/${index}.png`,
 }))
 
 vi.mock('../components/modal/AvatarSelectionModal.js', () => ({
