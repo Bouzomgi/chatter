@@ -74,4 +74,24 @@ describe('api client', () => {
     await api.patch('/test')
     expect(fetchMock).toHaveBeenCalledWith('/test', expect.objectContaining({ method: 'PATCH' }))
   })
+
+  it('sends PUT with JSON body', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse({}))
+    await api.put('/test', { avatarIndex: 3 })
+    expect(fetchMock).toHaveBeenCalledWith('/test', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ avatarIndex: 3 }),
+    }))
+  })
+
+  it('sends DELETE with no body', async () => {
+    fetchMock.mockResolvedValueOnce(okResponse({}))
+    await api.delete('/test')
+    expect(fetchMock).toHaveBeenCalledWith('/test', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  it('throws on 400', async () => {
+    fetchMock.mockResolvedValueOnce(errorResponse(400))
+    await expect(api.get('/test')).rejects.toThrow('HTTP 400')
+  })
 })
