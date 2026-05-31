@@ -236,10 +236,6 @@ describe('useChat — socket message:new', () => {
     expect(mockApi.patch).toHaveBeenCalledWith('/conversations/conv-1/read')
   })
 
-  // NOTE: own messages sent to existing conversations do NOT appear immediately.
-  // sendMessage() only POSTs to the API; the message is appended via the socket
-  // echo. If the socket delivery is slow or fails the sender won't see their
-  // own message until it arrives.
   it('does not mark conversation unread when the incoming message is from the current user', async () => {
     const conv2Read: Conversation = { ...conv2, unread: false }
     mockApi.get.mockImplementation((path: string) => {
@@ -261,14 +257,29 @@ describe('useChat — socket message:new', () => {
 })
 
 describe('useChat — sendMessage', () => {
-  it('posts to the active conversation when there are no pending users', async () => {
-    mockApi.post.mockResolvedValue({ json: () => Promise.resolve(makeMsg()) })
+  it('posts to the active conversation and immediately appends the message', async () => {
+    const sentMsg = makeMsg({ id: 'm-sent', body: 'hello', senderId: 'user-1' })
+    mockApi.post.mockResolvedValue({ json: () => Promise.resolve(sentMsg) })
     const { result } = renderHook(() => useChat())
     await waitFor(() => expect(result.current.state.activeConversationId).toBe('conv-1'))
 
     await act(async () => { await result.current.sendMessage('hello') })
 
     expect(mockApi.post).toHaveBeenCalledWith('/conversations/conv-1/messages', { body: 'hello' })
+    expect(result.current.activeMessages).toHaveLength(1)
+    expect(result.current.activeMessages![0].id).toBe('m-sent')
+  })
+
+  it('does not duplicate a message when the socket echo arrives after immediate append', async () => {
+    const sentMsg = makeMsg({ id: 'm-sent', body: 'hello', senderId: 'user-1' })
+    mockApi.post.mockResolvedValue({ json: () => Promise.resolve(sentMsg) })
+    const { result } = renderHook(() => useChat())
+    await waitFor(() => expect(result.current.state.activeConversationId).toBe('conv-1'))
+
+    await act(async () => { await result.current.sendMessage('hello') })
+    act(() => { emitSocket('message:new', sentMsg) })
+
+    expect(result.current.activeMessages).toHaveLength(1)
   })
 
   it('is a no-op when there is no active conversation and no pending users', async () => {
@@ -416,10 +427,7 @@ describe('useChat — handleToggleUserList', () => {
     expect(result.current.state.activeConversationId).toBe('conv-1')
   })
 
-  // NOTE: closing the user list after previewing a different conversation
-  // navigates to the previewed conversation, not the original one. Selecting users
-  // whose conversation exists and then dismissing the panel moves to that conversation.
-  it('does not restore saved conversation when user list closed after a preview', async () => {
+  it('restores original conversation when user list closed after a preview without sending', async () => {
     mockApi.get.mockImplementation((path: string) => {
       if (path === '/conversations') return Promise.resolve({ json: () => Promise.resolve([conv1, conv2]) })
       if (path === '/conversations/conv-1/messages') return Promise.resolve({ json: () => Promise.resolve(noMessages) })
@@ -435,8 +443,8 @@ describe('useChat — handleToggleUserList', () => {
     await act(async () => { await result.current.togglePendingUser(carol) })
     expect(result.current.state.activeConversationId).toBe('conv-2')
 
-    // Close user list without sending — lands on conv-2, not the original conv-1
+    // Close user list without sending — should return to original conv-1
     await act(async () => { await result.current.handleToggleUserList() })
-    expect(result.current.state.activeConversationId).toBe('conv-2')
+    expect(result.current.state.activeConversationId).toBe('conv-1')
   })
 })
