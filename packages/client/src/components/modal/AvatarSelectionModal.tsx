@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getCroppedAvatarSrc } from '../../lib/avatars.js'
+import { getAvatarSrc } from '../../lib/avatars.js'
 
 type AvatarSelectionModalProps = {
   readonly onSelect: (index: number) => void
@@ -50,7 +50,7 @@ export default function AvatarSelectionModal({ onSelect, onClose }: AvatarSelect
           {Array.from({ length: AVATAR_COUNT }, (_, i) => (
             <img
               key={i}
-              src={getCroppedAvatarSrc(i)}
+              src={getAvatarSrc(i)}
               alt={`avatar ${i + 1}`}
               className="w-full cursor-pointer transition-transform hover:scale-105"
               style={hoveredIndex === i ? { filter: 'url(#avatar-outline-modal)' } : {}}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth.js'
 import { api } from '../lib/api.js'
-import { getCroppedAvatarSrc } from '../lib/avatars.js'
+import { getAvatarSrc } from '../lib/avatars.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
 import AvatarSelectionModal from '../components/modal/AvatarSelectionModal.js'
 import type { User } from '@chatter/shared'
@@ -64,7 +64,7 @@ export default function Settings() {
         <div className="flex flex-col items-center gap-3">
           <span className="text-[22px]">current avatar</span>
           <img
-            src={getCroppedAvatarSrc(selectedAvatarIndex)}
+            src={getAvatarSrc(selectedAvatarIndex)}
             alt="current avatar"
             className="w-[120px] cursor-pointer transition-transform hover:scale-105"
             style={isHovered ? { filter: 'url(#avatar-outline)' } : {}}
