@@ -26,7 +26,7 @@ export interface Message {
 export interface Conversation {
   id: ConversationId
   createdAt: string
-  otherUser: UserSummary
+  participants: UserSummary[]
   latestMessage: { body: string; senderId: UserId; createdAt: string } | null
   unread: boolean
 }

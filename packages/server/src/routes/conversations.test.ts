@@ -30,11 +30,11 @@ async function loginAs(email: string) {
 
 describe('POST /conversations', () => {
   it('requires auth', async () => {
-    const res = await request(app).post('/conversations').send({ targetUserId: 'x' })
+    const res = await request(app).post('/conversations').send({ participantIds: ['x'] })
     expect(res.status).toBe(401)
   })
 
-  it('rejects missing targetUserId', async () => {
+  it('rejects missing participantIds', async () => {
     const alice = await loginAs('alice@example.com')
     const res = await request(app)
       .post('/conversations')
@@ -48,7 +48,7 @@ describe('POST /conversations', () => {
     const res = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: alice.user.id })
+      .send({ participantIds: [alice.user.id] })
     expect(res.status).toBe(400)
   })
 
@@ -57,7 +57,7 @@ describe('POST /conversations', () => {
     const res = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: 'nonexistent-id' })
+      .send({ participantIds: ['nonexistent-id'] })
     expect(res.status).toBe(404)
   })
 
@@ -68,11 +68,33 @@ describe('POST /conversations', () => {
     const res = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
 
     expect(res.status).toBe(200)
-    expect(res.body).toMatchObject({ otherUser: { username: 'bob' } })
+    expect(res.body.participants).toEqual(expect.arrayContaining([expect.objectContaining({ username: 'bob' })]))
     expect(res.body.id).toBeDefined()
+  })
+
+  it('returns existing group conversation when same members are provided in a different order', async () => {
+    const unique = Date.now().toString()
+    const u1 = await request(app).post('/auth/register').send({ username: `g1${unique}`, email: `g1${unique}@test.com`, password: 'pw123' })
+    const u2 = await request(app).post('/auth/register').send({ username: `g2${unique}`, email: `g2${unique}@test.com`, password: 'pw123' })
+    const u3 = await request(app).post('/auth/register').send({ username: `g3${unique}`, email: `g3${unique}@test.com`, password: 'pw123' })
+    const cookie = u1.headers['set-cookie'][0] as string
+
+    const first = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ participantIds: [u2.body.id, u3.body.id] })
+    expect(first.status).toBe(201)
+
+    // Same members, different order
+    const second = await request(app)
+      .post('/conversations')
+      .set('Cookie', cookie)
+      .send({ participantIds: [u3.body.id, u2.body.id] })
+    expect(second.status).toBe(200)
+    expect(second.body.id).toBe(first.body.id)
   })
 
   it('creates a new conversation and is idempotent on repeat', async () => {
@@ -82,15 +104,15 @@ describe('POST /conversations', () => {
     const first = await request(app)
       .post('/conversations')
       .set('Cookie', bob.cookie)
-      .send({ targetUserId: carol.user.id })
+      .send({ participantIds: [carol.user.id] })
 
     expect(first.status).toBe(201)
-    expect(first.body).toMatchObject({ otherUser: { username: 'carol' } })
+    expect(first.body.participants).toEqual(expect.arrayContaining([expect.objectContaining({ username: 'carol' })]))
 
     const second = await request(app)
       .post('/conversations')
       .set('Cookie', bob.cookie)
-      .send({ targetUserId: carol.user.id })
+      .send({ participantIds: [carol.user.id] })
 
     expect(second.status).toBe(200)
     expect(second.body.id).toBe(first.body.id)
@@ -113,8 +135,9 @@ describe('GET /conversations', () => {
 
     for (const convo of res.body) {
       expect(convo).toHaveProperty('id')
-      expect(convo).toHaveProperty('otherUser')
-      expect(convo.otherUser).toHaveProperty('username')
+      expect(convo).toHaveProperty('participants')
+      expect(Array.isArray(convo.participants)).toBe(true)
+      expect(convo.participants[0]).toHaveProperty('username')
     }
   })
 
@@ -135,7 +158,7 @@ describe('GET /conversations', () => {
     const res = await request(app).get('/conversations').set('Cookie', alice.cookie)
 
     const carolConvo = res.body.find(
-      (c: { otherUser: { username: string } }) => c.otherUser.username === 'carol',
+      (c: { participants: { username: string }[] }) => c.participants.some(p => p.username === 'carol'),
     )
     expect(carolConvo.latestMessage).toMatchObject({ body: 'Perfect 👍' })
   })
@@ -182,7 +205,7 @@ describe('POST /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', bob.cookie)
-      .send({ targetUserId: carol.user.id })
+      .send({ participantIds: [carol.user.id] })
     const conversationId = convoRes.body.id
 
     // Alice is not in bob-carol convo
@@ -200,7 +223,7 @@ describe('POST /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
     const conversationId = convoRes.body.id
 
     const res = await request(app)
@@ -217,7 +240,7 @@ describe('POST /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
     const conversationId = convoRes.body.id
 
     const res = await request(app)
@@ -258,7 +281,7 @@ describe('GET /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', bob.cookie)
-      .send({ targetUserId: carol.user.id })
+      .send({ participantIds: [carol.user.id] })
     const conversationId = convoRes.body.id
 
     const res = await request(app)
@@ -306,7 +329,7 @@ describe('GET /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', cookie)
-      .send({ targetUserId: u2Res.body.id })
+      .send({ participantIds: [u2Res.body.id] })
     const conversationId = convoRes.body.id
 
     for (const body of ['msg1', 'msg2', 'msg3']) {
@@ -333,7 +356,7 @@ describe('GET /conversations/:id/messages', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', cookie)
-      .send({ targetUserId: u2Res.body.id })
+      .send({ participantIds: [u2Res.body.id] })
     const conversationId = convoRes.body.id
 
     for (const body of ['a', 'b', 'c']) {

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Message } from '@chatter/shared'
+import type { Message, UserSummary } from '@chatter/shared'
 import { formatMessageTimestamp } from '../../lib/formatTimestamp.js'
+import { getAvatarSrc } from '../../lib/avatars.js'
 
 interface Props {
   messages: Message[]
   currentUserId: string
+  participants?: UserSummary[]
   hasMore?: boolean
   onLoadMore?: () => void
 }
@@ -28,7 +30,7 @@ function addSpacing(prev: Message | undefined, curr: Message): boolean {
   return senderChanged || gap >= THIRTY_SECONDS_MS
 }
 
-export default function MessageThread({ messages, currentUserId, hasMore, onLoadMore }: Props) {
+export default function MessageThread({ messages, currentUserId, participants, hasMore, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const firstMsgIdRef = useRef<string | undefined>(undefined)
@@ -88,8 +90,12 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
         {messages.map((msg, i) => {
           const prev = messages[i - 1]
           const isMine = msg.senderId === currentUserId
+          const isGroup = participants !== undefined && participants.length > 1
           const showTs = showTimestamp(prev, msg)
           const addSpace = !showTs && addSpacing(prev, msg)
+          const isNewRun = !prev || prev.senderId !== msg.senderId || showTs
+          const showSenderInfo = isGroup && !isMine && isNewRun
+          const sender = showSenderInfo ? participants?.find(p => p.id === msg.senderId) : undefined
 
           return (
             <div key={msg.id}>
@@ -99,15 +105,31 @@ export default function MessageThread({ messages, currentUserId, hasMore, onLoad
                 </div>
               )}
               <div
-                className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${addSpace ? 'mt-2' : ''}`}
+                className={`flex ${isMine ? 'justify-end' : 'justify-start'} ${addSpace || showSenderInfo ? 'mt-2' : ''}`}
               >
-                <div
-                  className="max-w-[60%] px-3 py-2 rounded-[10px] text-[15px] leading-snug"
-                  style={{
-                    background: isMine ? 'rgba(0,166,118,0.2)' : 'rgba(217,217,217,0.7)',
-                  }}
-                >
-                  {msg.body}
+                {isGroup && !isMine && (
+                  <div className="w-8 shrink-0 mr-1 self-end">
+                    {showSenderInfo && sender && (
+                      <img
+                        src={getAvatarSrc(sender.avatarIndex)}
+                        alt={sender.username}
+                        className="h-7 w-7 rounded-full"
+                      />
+                    )}
+                  </div>
+                )}
+                <div className="flex flex-col items-start max-w-[60%]">
+                  {showSenderInfo && sender && (
+                    <span className="text-[11px] text-gray-500 mb-0.5 ml-1">{sender.username}</span>
+                  )}
+                  <div
+                    className="px-3 py-2 rounded-[10px] text-[15px] leading-snug"
+                    style={{
+                      background: isMine ? 'rgba(0,166,118,0.2)' : 'rgba(217,217,217,0.7)',
+                    }}
+                  >
+                    {msg.body}
+                  </div>
                 </div>
               </div>
             </div>

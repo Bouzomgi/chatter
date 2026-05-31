@@ -11,7 +11,8 @@ interface State {
   hasMore: Record<string, boolean>
   users: UserSummary[]
   activeConversationId: string | null
-  pendingUser: UserSummary | null
+  savedConversationId: string | null
+  pendingUsers: UserSummary[]
   showUserList: boolean
   loaded: boolean
 }
@@ -25,7 +26,9 @@ type Action =
   | { type: 'SET_ACTIVE'; conversationId: string }
   | { type: 'UPSERT_CONVERSATION'; conversation: Conversation }
   | { type: 'TOGGLE_USER_LIST' }
-  | { type: 'SET_PENDING_USER'; user: UserSummary | null }
+  | { type: 'TOGGLE_PENDING_USER'; user: UserSummary }
+  | { type: 'PREVIEW_CONVERSATION'; conversationId: string | null }
+  | { type: 'CLEAR_PENDING_USERS' }
   | { type: 'MARK_UNREAD'; conversationId: string }
   | { type: 'MARK_READ'; conversationId: string }
 
@@ -70,18 +73,35 @@ function reducer(state: State, action: Action): State {
     case 'SET_USERS':
       return { ...state, users: action.users }
     case 'SET_ACTIVE':
-      return { ...state, activeConversationId: action.conversationId, showUserList: false, pendingUser: null }
+      return { ...state, activeConversationId: action.conversationId, showUserList: false, pendingUsers: [], savedConversationId: null }
     case 'UPSERT_CONVERSATION': {
       const exists = state.conversations.some(c => c.id === action.conversation.id)
       const conversations = exists
         ? state.conversations
         : [...state.conversations, action.conversation].sort(byLatestMessage)
-      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false, pendingUser: null }
+      return { ...state, conversations, activeConversationId: action.conversation.id, showUserList: false, pendingUsers: [], savedConversationId: null }
     }
     case 'TOGGLE_USER_LIST':
-      return { ...state, showUserList: !state.showUserList, pendingUser: null }
-    case 'SET_PENDING_USER':
-      return { ...state, pendingUser: action.user, showUserList: false }
+      if (!state.showUserList) {
+        // entering user list: save current selection and clear it
+        return { ...state, showUserList: true, pendingUsers: [], savedConversationId: state.activeConversationId, activeConversationId: null }
+      } else {
+        // leaving user list: restore saved selection if no preview was made
+        return { ...state, showUserList: false, pendingUsers: [], activeConversationId: state.activeConversationId ?? state.savedConversationId, savedConversationId: null }
+      }
+    case 'TOGGLE_PENDING_USER': {
+      const exists = state.pendingUsers.some(u => u.id === action.user.id)
+      return {
+        ...state,
+        pendingUsers: exists
+          ? state.pendingUsers.filter(u => u.id !== action.user.id)
+          : [...state.pendingUsers, action.user],
+      }
+    }
+    case 'PREVIEW_CONVERSATION':
+      return { ...state, activeConversationId: action.conversationId }
+    case 'CLEAR_PENDING_USERS':
+      return { ...state, pendingUsers: [] }
     case 'MARK_UNREAD':
       return {
         ...state,
@@ -107,7 +127,8 @@ const initialState: State = {
   hasMore: {},
   users: [],
   activeConversationId: null,
-  pendingUser: null,
+  savedConversationId: null,
+  pendingUsers: [],
   showUserList: false,
   loaded: false,
 }
@@ -199,13 +220,32 @@ export function useChat() {
     dispatch({ type: 'PREPEND_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
   }
 
-  function selectUser(u: UserSummary) {
-    const existing = state.conversations.find(c => c.otherUser?.id === u.id)
-    if (existing) {
-      selectConversation(existing.id)
+  async function togglePendingUser(u: UserSummary) {
+    const exists = state.pendingUsers.some(p => p.id === u.id)
+    const newPending = exists
+      ? state.pendingUsers.filter(p => p.id !== u.id)
+      : [...state.pendingUsers, u]
+
+    dispatch({ type: 'TOGGLE_PENDING_USER', user: u })
+
+    if (newPending.length === 0) {
+      dispatch({ type: 'PREVIEW_CONVERSATION', conversationId: null })
       return
     }
-    dispatch({ type: 'SET_PENDING_USER', user: u })
+
+    const match = state.conversations.find(c =>
+      c.participants.length === newPending.length &&
+      newPending.every(pu => c.participants.some(p => p.id === pu.id))
+    )
+
+    dispatch({ type: 'PREVIEW_CONVERSATION', conversationId: match?.id ?? null })
+
+    if (match && !state.messages[match.id]) {
+      const data: { messages: Message[]; hasMore: boolean } = await api
+        .get(`/conversations/${match.id}/messages`)
+        .then(r => r.json())
+      dispatch({ type: 'SET_MESSAGES', conversationId: match.id, messages: data.messages, hasMore: data.hasMore })
+    }
   }
 
   async function handleToggleUserList() {
@@ -217,9 +257,9 @@ export function useChat() {
   }
 
   async function sendMessage(body: string) {
-    if (state.pendingUser) {
+    if (state.pendingUsers.length > 0) {
       const conversation: Conversation = await api
-        .post('/conversations', { targetUserId: state.pendingUser.id })
+        .post('/conversations', { participantIds: state.pendingUsers.map(u => u.id) })
         .then(r => r.json())
       const message: Message = await api
         .post(`/conversations/${conversation.id}/messages`, { body })
@@ -253,10 +293,10 @@ export function useChat() {
     activeMessages,
     activeHasMore,
     activeConversation,
-    pendingUser: state.pendingUser,
+    pendingUsers: state.pendingUsers,
     selectConversation,
     loadMore,
-    selectUser,
+    togglePendingUser,
     handleToggleUserList,
     sendMessage,
   }

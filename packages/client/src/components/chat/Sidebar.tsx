@@ -8,9 +8,10 @@ interface Props {
   users: UserSummary[]
   activeConversationId: string | null
   showUserList: boolean
+  pendingUserIds: Set<string>
   onlineUserIds: Set<string>
   onSelectConversation: (id: string) => void
-  onSelectUser: (user: UserSummary) => void
+  onTogglePendingUser: (user: UserSummary) => void
   onToggleUserList: () => void
 }
 
@@ -19,9 +20,10 @@ export default function Sidebar({
   users,
   activeConversationId,
   showUserList,
+  pendingUserIds,
   onlineUserIds,
   onSelectConversation,
-  onSelectUser,
+  onTogglePendingUser,
   onToggleUserList,
 }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
@@ -43,14 +45,19 @@ export default function Sidebar({
         )}
         {showUserList
           ? users.map(u => (
-              <UserItem key={u.id} user={u} onClick={() => onSelectUser(u)} />
+              <UserItem
+                key={u.id}
+                user={u}
+                selected={pendingUserIds.has(u.id)}
+                onClick={() => onTogglePendingUser(u)}
+              />
             ))
           : conversations.map(c => (
               <ConversationItem
                 key={c.id}
                 conversation={c}
                 isActive={c.id === activeConversationId}
-                isOnline={onlineUserIds.has(c.otherUser.id)}
+                isOnline={c.participants.some(p => onlineUserIds.has(p.id))}
                 onClick={() => onSelectConversation(c.id)}
               />
             ))}

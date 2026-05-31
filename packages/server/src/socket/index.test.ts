@@ -135,7 +135,7 @@ describe('Socket.io reconnect', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', bob.cookie)
-      .send({ targetUserId: alice.user.id })
+      .send({ participantIds: [alice.user.id] })
     const conversationId = convoRes.body.id
 
     // Alice disconnects and reconnects — server should re-join her to all rooms including the new one
@@ -174,7 +174,7 @@ describe('Socket.io presence', () => {
     await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
 
     const aliceSocket = connectWithCookie(alice.cookie)
     await new Promise<void>((resolve, reject) => {
@@ -206,7 +206,7 @@ describe('Socket.io presence', () => {
     await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
 
     const aliceSocket = connectWithCookie(alice.cookie)
     const bobSocket = connectWithCookie(bob.cookie)
@@ -232,7 +232,7 @@ describe('Socket.io presence', () => {
     await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
 
     const aliceSocket = connectWithCookie(alice.cookie)
     await new Promise<void>((resolve, reject) => {
@@ -264,7 +264,7 @@ describe('Socket.io message:new delivery', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
     const conversationId = convoRes.body.id
 
     // Bob connects and waits for message:new
@@ -304,7 +304,7 @@ describe('Socket.io message:new delivery', () => {
     const convoRes = await request(app)
       .post('/conversations')
       .set('Cookie', alice.cookie)
-      .send({ targetUserId: bob.user.id })
+      .send({ participantIds: [bob.user.id] })
     const conversationId = convoRes.body.id
 
     // Carol connects — she is not in alice-bob

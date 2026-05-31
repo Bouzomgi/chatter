@@ -13,14 +13,14 @@ const conversations: Conversation[] = [
   {
     id: 'c1',
     createdAt: '2026-01-01T00:00:00.000Z',
-    otherUser: { id: 'u2', username: 'bob', avatarIndex: 1 },
+    participants: [{ id: 'u2', username: 'bob', avatarIndex: 1 }],
     latestMessage: { body: 'hey', senderId: 'u2', createdAt: '2026-01-01T00:00:00.000Z' },
     unread: false,
   },
   {
     id: 'c2',
     createdAt: '2026-01-01T00:00:00.000Z',
-    otherUser: { id: 'u3', username: 'carol', avatarIndex: 2 },
+    participants: [{ id: 'u3', username: 'carol', avatarIndex: 2 }],
     latestMessage: null,
     unread: true,
   },
@@ -36,9 +36,10 @@ const baseProps = {
   users,
   activeConversationId: null,
   showUserList: false,
+  pendingUserIds: new Set<string>(),
   onlineUserIds: new Set<string>(),
   onSelectConversation: vi.fn(),
-  onSelectUser: vi.fn(),
+  onTogglePendingUser: vi.fn(),
   onToggleUserList: vi.fn(),
 }
 
@@ -80,10 +81,10 @@ describe('Sidebar', () => {
     expect(onSelectConversation).toHaveBeenCalledWith('c1')
   })
 
-  it('calls onSelectUser with user when user item is clicked', () => {
-    const onSelectUser = vi.fn()
-    render(<Sidebar {...baseProps} showUserList={true} onSelectUser={onSelectUser} />)
+  it('calls onTogglePendingUser with user when user item is clicked', () => {
+    const onTogglePendingUser = vi.fn()
+    render(<Sidebar {...baseProps} showUserList={true} onTogglePendingUser={onTogglePendingUser} />)
     fireEvent.click(screen.getAllByTestId('user-item')[0])
-    expect(onSelectUser).toHaveBeenCalledWith(users[0])
+    expect(onTogglePendingUser).toHaveBeenCalledWith(users[0])
   })
 })

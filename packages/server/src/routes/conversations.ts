@@ -6,7 +6,7 @@ import prisma from '../lib/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
 
 const createConversationSchema = z.object({
-  targetUserId: z.string().min(1),
+  participantIds: z.array(z.string().min(1)).min(1),
 })
 
 const createMessageSchema = z.object({
@@ -25,49 +25,54 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     const currentUserId = req.user!.userId
     const parsed = createConversationSchema.safeParse(req.body)
     if (!parsed.success) {
-      res.status(400).json({ error: 'targetUserId is required' })
+      res.status(400).json({ error: 'participantIds is required' })
       return
     }
-    const { targetUserId } = parsed.data
+    const { participantIds } = parsed.data
 
-    if (targetUserId === currentUserId) {
+    if (participantIds.includes(currentUserId)) {
       res.status(400).json({ error: 'Cannot start a conversation with yourself' })
       return
     }
 
-    const target = await prisma.user.findUnique({ where: { id: targetUserId } })
-    if (!target) {
+    const targets = await prisma.user.findMany({ where: { id: { in: participantIds } } })
+    if (targets.length !== participantIds.length) {
       res.status(404).json({ error: 'User not found' })
       return
     }
 
+    const allParticipantIds = [currentUserId, ...participantIds]
+
+    // Return existing conversation with exact same member set (order-independent)
     const existing = await prisma.conversation.findFirst({
       where: {
-        AND: [
-          { participants: { some: { userId: currentUserId } } },
-          { participants: { some: { userId: targetUserId } } },
-        ],
+        AND: allParticipantIds.map(id => ({ participants: { some: { userId: id } } })),
+        participants: { every: { userId: { in: allParticipantIds } } },
       },
       include: {
         participants: {
-          where: { userId: targetUserId },
+          where: { userId: { in: participantIds } },
           include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
       },
     })
 
     if (existing) {
-      res.json({ id: existing.id, createdAt: existing.createdAt, otherUser: existing.participants[0].user })
+      res.json({
+        id: existing.id,
+        createdAt: existing.createdAt,
+        participants: existing.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
+      })
       return
     }
 
     const conversation = await prisma.conversation.create({
       data: {
-        participants: { create: [{ userId: currentUserId }, { userId: targetUserId }] },
+        participants: { create: allParticipantIds.map(id => ({ userId: id })) },
       },
       include: {
         participants: {
-          where: { userId: targetUserId },
+          where: { userId: { in: participantIds } },
           include: { user: { select: { id: true, username: true, avatarIndex: true } } },
         },
       },
@@ -76,7 +81,7 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     res.status(201).json({
       id: conversation.id,
       createdAt: conversation.createdAt,
-      otherUser: conversation.participants[0].user,
+      participants: conversation.participants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
     })
   })
 
@@ -98,13 +103,14 @@ export function createConversationsRouter(io: Server): ExpressRouter {
     })
 
     const result = conversations
+      .filter(c => c.messages.length > 0)
       .map(c => {
         const myParticipant = c.participants.find(p => p.userId === currentUserId)
-        const otherParticipant = c.participants.find(p => p.userId !== currentUserId)
+        const otherParticipants = c.participants.filter(p => p.userId !== currentUserId)
         return {
           id: c.id,
           createdAt: c.createdAt,
-          otherUser: otherParticipant?.user ?? null,
+          participants: otherParticipants.sort((a, b) => a.user.username.localeCompare(b.user.username)).map(p => p.user),
           latestMessage: c.messages[0] ?? null,
           unread: myParticipant ? !myParticipant.seen : false,
         }
