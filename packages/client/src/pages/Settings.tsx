@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth.js'
 import { api } from '../lib/api.js'
-import { getAvatarSrc } from '../lib/avatars.js'
+import { getCroppedAvatarSrc } from '../lib/avatars.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
 import AvatarSelectionModal from '../components/modal/AvatarSelectionModal.js'
 import type { User } from '@chatter/shared'
@@ -14,6 +14,7 @@ export default function Settings() {
   const [selectedAvatarIndex, setSelectedAvatarIndex] = useState(user?.avatarIndex ?? 0)
   const [showModal, setShowModal] = useState(false)
   const [isShaking, setIsShaking] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
 
   function shake() {
     setIsShaking(true)
@@ -33,6 +34,20 @@ export default function Settings() {
 
   return (
     <div className="flex items-center justify-center h-full w-full">
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <filter id="avatar-outline" x="-10%" y="-10%" width="130%" height="130%">
+            <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="expanded" />
+            <feOffset in="expanded" dx="3" dy="3" result="offsetShape" />
+            <feFlood floodColor="#00a676" floodOpacity="0.65" result="color" />
+            <feComposite in="color" in2="offsetShape" operator="in" result="outline" />
+            <feMerge>
+              <feMergeNode in="outline" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       {showModal && (
         <AvatarSelectionModal
           onSelect={(index) => {
@@ -49,9 +64,12 @@ export default function Settings() {
         <div className="flex flex-col items-center gap-3">
           <span className="text-[22px]">current avatar</span>
           <img
-            src={getAvatarSrc(selectedAvatarIndex)}
+            src={getCroppedAvatarSrc(selectedAvatarIndex)}
             alt="current avatar"
-            className="w-[120px] cursor-pointer rounded-xl hover:scale-105 transition-transform hover:drop-shadow-[2px_4px_4px_#00a676]"
+            className="w-[120px] cursor-pointer transition-transform hover:scale-105"
+            style={isHovered ? { filter: 'url(#avatar-outline)' } : {}}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             onClick={() => setShowModal(true)}
             data-testid="current-avatar"
           />
