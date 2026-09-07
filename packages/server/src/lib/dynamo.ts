@@ -13,4 +13,15 @@ export const TableNames = {
   users: process.env.USERS_TABLE!,
   usersByEmail: process.env.USERS_BY_EMAIL_TABLE!,
   usersByUsername: process.env.USERS_BY_USERNAME_TABLE!,
+  participants: process.env.PARTICIPANTS_TABLE!,
+  connections: process.env.CONNECTIONS_TABLE!,
+  connectionUsers: process.env.CONNECTION_USERS_TABLE!,
+}
+
+export const IndexNames = {
+  // GSI on ParticipantsTable: partitionKey userId, sortKey conversationId.
+  // The table's own key (conversationId, userId) answers "who's in this
+  // conversation"; this index answers the reverse — "what conversations is
+  // this user in" — which is what $connect needs to rejoin rooms.
+  participantsByUser: 'ByUserIndex',
 }
