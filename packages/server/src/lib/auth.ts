@@ -31,15 +31,18 @@ function extractToken(cookies: string[] | undefined): string | null {
   return null
 }
 
-// Stands in for the original project's requireAuth middleware. There's no
-// middleware chain in a Lambda handler, so each authenticated handler calls
-// this directly and returns 401 itself if it comes back null.
-export function verifyRequest(event: APIGatewayProxyEventV2): AuthPayload | null {
-  const token = extractToken(event.cookies)
+export function verifyToken(token: string | undefined | null): AuthPayload | null {
   if (!token) return null
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload
   } catch {
     return null
   }
+}
+
+// Stands in for the original project's requireAuth middleware. There's no
+// middleware chain in a Lambda handler, so each authenticated handler calls
+// this directly and returns 401 itself if it comes back null.
+export function verifyRequest(event: APIGatewayProxyEventV2): AuthPayload | null {
+  return verifyToken(extractToken(event.cookies))
 }

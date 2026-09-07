@@ -5,8 +5,11 @@ import { Construct } from 'constructs'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import { Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { HttpApi, HttpMethod, CorsHttpMethod } from 'aws-cdk-lib/aws-apigatewayv2'
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
+import { HttpApi, HttpMethod, CorsHttpMethod, WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2'
+import {
+  HttpLambdaIntegration,
+  WebSocketLambdaIntegration,
+} from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -53,10 +56,20 @@ export class ChatterStack extends Stack {
       partitionKey: { name: 'username', type: dynamodb.AttributeType.STRING },
     })
 
-    new dynamodb.Table(this, 'ParticipantsTable', {
+    const participantsTable = new dynamodb.Table(this, 'ParticipantsTable', {
       ...tableDefaults,
       partitionKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+    })
+
+    // The table's own key answers "who's in this conversation." $connect and
+    // $disconnect need the reverse — "what conversations is this user in" —
+    // to rejoin/leave rooms, which is exactly what a GSI is for.
+    participantsTable.addGlobalSecondaryIndex({
+      indexName: 'ByUserIndex',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.KEYS_ONLY,
     })
 
     new dynamodb.Table(this, 'MessagesTable', {
@@ -65,10 +78,18 @@ export class ChatterStack extends Stack {
       sortKey: { name: 'sortKey', type: dynamodb.AttributeType.STRING }, // createdAt#messageId
     })
 
-    new dynamodb.Table(this, 'ConnectionsTable', {
+    const connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
       ...tableDefaults,
       partitionKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'connectionId', type: dynamodb.AttributeType.STRING },
+    })
+
+    // No Socket.io equivalent — exists because $disconnect only gets a bare
+    // connectionId and needs a way back to the user (and from there, the
+    // conversations) it belonged to.
+    const connectionUsersTable = new dynamodb.Table(this, 'ConnectionUsersTable', {
+      ...tableDefaults,
+      partitionKey: { name: 'connectionId', type: dynamodb.AttributeType.STRING },
     })
 
     // --- API layer ---
@@ -143,6 +164,48 @@ export class ChatterStack extends Stack {
       path: '/auth/me',
       methods: [HttpMethod.GET],
       integration: new HttpLambdaIntegration('MeIntegration', meFn),
+    })
+
+    // --- WebSocket layer ---
+    // $connect/$disconnect are the whole real-time surface for now — the
+    // send-message route and its fan-out land in the next roadmap step.
+    const wsEnv = {
+      JWT_SECRET: props.jwtSecret,
+      PARTICIPANTS_TABLE: participantsTable.tableName,
+      CONNECTIONS_TABLE: connectionsTable.tableName,
+      CONNECTION_USERS_TABLE: connectionUsersTable.tableName,
+    }
+
+    const wsFn = (name: string, entry: string) =>
+      new NodejsFunction(this, name, {
+        entry: path.join(__dirname, entry),
+        runtime: Runtime.NODEJS_20_X,
+        timeout: Duration.seconds(10),
+        environment: wsEnv,
+      })
+
+    const onConnectFn = wsFn('OnConnectFn', '../src/ws/onConnect.ts')
+    const onDisconnectFn = wsFn('OnDisconnectFn', '../src/ws/onDisconnect.ts')
+
+    participantsTable.grantReadData(onConnectFn)
+    connectionsTable.grantWriteData(onConnectFn)
+    connectionUsersTable.grantWriteData(onConnectFn)
+
+    participantsTable.grantReadData(onDisconnectFn)
+    connectionsTable.grantWriteData(onDisconnectFn)
+    connectionUsersTable.grantReadWriteData(onDisconnectFn)
+
+    const webSocketApi = new WebSocketApi(this, 'WebSocketApi', {
+      connectRouteOptions: { integration: new WebSocketLambdaIntegration('OnConnectIntegration', onConnectFn) },
+      disconnectRouteOptions: {
+        integration: new WebSocketLambdaIntegration('OnDisconnectIntegration', onDisconnectFn),
+      },
+    })
+
+    new WebSocketStage(this, 'WebSocketStage', {
+      webSocketApi,
+      stageName: 'prod',
+      autoDeploy: true,
     })
   }
 }
