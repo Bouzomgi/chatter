@@ -9,4 +9,8 @@ new ChatterStack(app, 'ChatterStack', {
   // with no secrets configured. A real `cdk deploy` must pass the real
   // secret, e.g. via `JWT_SECRET=... cdk deploy`.
   jwtSecret: process.env.JWT_SECRET ?? 'unsafe-dev-secret-do-not-deploy-with-this-value',
+  // Unset on a from-scratch deploy — see DEPLOY.md for the two-step
+  // bootstrap this requires (the CloudFront domain isn't known until after
+  // the first deploy creates it).
+  clientOrigin: process.env.CLIENT_ORIGIN,
 })
