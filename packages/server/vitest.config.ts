@@ -12,6 +12,8 @@ export default defineConfig({
       MESSAGES_TABLE: 'MessagesTableTest',
       CONNECTIONS_TABLE: 'ConnectionsTableTest',
       CONNECTION_USERS_TABLE: 'ConnectionUsersTableTest',
+      CONVERSATIONS_TABLE: 'ConversationsTableTest',
+      CONVERSATIONS_BY_KEY_TABLE: 'ConversationsByKeyTableTest',
     },
   },
 })
