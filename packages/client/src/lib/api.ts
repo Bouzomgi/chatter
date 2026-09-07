@@ -1,5 +1,7 @@
+import { API_BASE_URL } from './config.js'
+
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,

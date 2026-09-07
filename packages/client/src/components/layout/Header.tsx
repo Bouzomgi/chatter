@@ -1,5 +1,6 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/auth.js'
+import { API_BASE_URL } from '../../lib/config.js'
 
 export default function Header() {
   const { user, setUser } = useAuth()
@@ -9,7 +10,7 @@ export default function Header() {
   const onSettings = location.pathname === '/settings'
 
   async function logout() {
-    await fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+    await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
     setUser(null)
     navigate('/login')
   }

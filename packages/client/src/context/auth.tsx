@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { User } from '@chatter/shared'
+import { API_BASE_URL } from '../lib/config.js'
 
 interface AuthState {
   user: User | null
@@ -14,7 +15,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/auth/me', { credentials: 'include' })
+    fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' })
       .then(res => (res.ok ? res.json() : null))
       .then((data: User | null) => setUser(data))
       .catch(() => setUser(null))

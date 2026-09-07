@@ -108,7 +108,7 @@ export class ChatterStack extends Stack {
     // --- API layer ---
     const httpApi = new HttpApi(this, 'HttpApi', {
       corsPreflight: {
-        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST],
+        allowMethods: [CorsHttpMethod.GET, CorsHttpMethod.POST, CorsHttpMethod.PUT, CorsHttpMethod.PATCH],
         allowHeaders: ['content-type'],
         // Cookie auth requires credentialed CORS, which the spec forbids
         // combining with a wildcard origin — so this has to be a real origin
@@ -148,6 +148,7 @@ export class ChatterStack extends Stack {
     const loginFn = authFn('LoginFn', '../src/http/auth/login.ts')
     const logoutFn = authFn('LogoutFn', '../src/http/auth/logout.ts')
     const meFn = authFn('MeFn', '../src/http/auth/me.ts')
+    const wsTicketFn = authFn('WsTicketFn', '../src/http/auth/wsTicket.ts')
 
     usersTable.grantReadWriteData(registerFn)
     usersByEmailTable.grantReadWriteData(registerFn)
@@ -157,6 +158,7 @@ export class ChatterStack extends Stack {
     usersByEmailTable.grantReadData(loginFn)
 
     usersTable.grantReadData(meFn)
+    // wsTicketFn only signs a token — no table access needed.
 
     httpApi.addRoutes({
       path: '/auth/register',
@@ -177,6 +179,11 @@ export class ChatterStack extends Stack {
       path: '/auth/me',
       methods: [HttpMethod.GET],
       integration: new HttpLambdaIntegration('MeIntegration', meFn),
+    })
+    httpApi.addRoutes({
+      path: '/auth/ws-ticket',
+      methods: [HttpMethod.GET],
+      integration: new HttpLambdaIntegration('WsTicketIntegration', wsTicketFn),
     })
 
     // --- WebSocket layer ---
@@ -256,6 +263,7 @@ export class ChatterStack extends Stack {
     const createConversationFn = restFn('CreateConversationFn', '../src/http/conversations/createConversation.ts')
     const getConversationsFn = restFn('GetConversationsFn', '../src/http/conversations/getConversations.ts')
     const getMessagesFn = restFn('GetMessagesFn', '../src/http/conversations/getMessages.ts')
+    const markReadFn = restFn('MarkReadFn', '../src/http/conversations/markRead.ts')
 
     usersTable.grantReadData(getUsersFn)
     usersTable.grantReadWriteData(updateMeFn)
@@ -273,6 +281,8 @@ export class ChatterStack extends Stack {
     participantsTable.grantReadData(getMessagesFn)
     messagesTable.grantReadData(getMessagesFn)
     conversationsTable.grantReadData(getMessagesFn)
+
+    participantsTable.grantReadWriteData(markReadFn)
 
     httpApi.addRoutes({
       path: '/users',
@@ -298,6 +308,11 @@ export class ChatterStack extends Stack {
       path: '/conversations/{id}/messages',
       methods: [HttpMethod.GET],
       integration: new HttpLambdaIntegration('GetMessagesIntegration', getMessagesFn),
+    })
+    httpApi.addRoutes({
+      path: '/conversations/{id}/read',
+      methods: [HttpMethod.PATCH],
+      integration: new HttpLambdaIntegration('MarkReadIntegration', markReadFn),
     })
   }
 }

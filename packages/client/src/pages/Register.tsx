@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth.js'
 import FormField from '../components/FormField.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
+import { API_BASE_URL } from '../lib/config.js'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -30,7 +31,7 @@ export default function Register() {
       return
     }
     try {
-      const res = await fetch('/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

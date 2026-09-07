@@ -99,9 +99,12 @@ describe('sendMessage handler', () => {
     ddbMock.on(PutCommand).resolves({})
     ddbMock.on(UpdateCommand).resolves({})
     ddbMock.on(DeleteCommand).resolves({})
+    // Only the stale connection is actually gone — the sender's own
+    // connection (always included in the fan-out) is still fine.
     apiGwMock
-      .on(PostToConnectionCommand)
+      .on(PostToConnectionCommand, { ConnectionId: 'stale-conn' })
       .rejects(new GoneException({ message: 'gone', $metadata: {} }))
+    apiGwMock.on(PostToConnectionCommand, { ConnectionId: 'sender-conn' }).resolves({})
 
     const result = await handler(
       fakeEvent({ conversationId: 'convo-1', body: 'hi' }),
@@ -110,6 +113,6 @@ describe('sendMessage handler', () => {
     )
 
     expect(result).toMatchObject({ statusCode: 200 })
-    expect(ddbMock.commandCalls(DeleteCommand)).toHaveLength(2) // Connections + ConnectionUsers cleanup
+    expect(ddbMock.commandCalls(DeleteCommand)).toHaveLength(2) // Connections + ConnectionUsers cleanup, stale-conn only
   })
 })
