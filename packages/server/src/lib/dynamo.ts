@@ -17,6 +17,8 @@ export const TableNames = {
   messages: process.env.MESSAGES_TABLE!,
   connections: process.env.CONNECTIONS_TABLE!,
   connectionUsers: process.env.CONNECTION_USERS_TABLE!,
+  conversations: process.env.CONVERSATIONS_TABLE!,
+  conversationsByKey: process.env.CONVERSATIONS_BY_KEY_TABLE!,
 }
 
 export const IndexNames = {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mockClient } from 'aws-sdk-client-mock'
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import {
   ApiGatewayManagementApiClient,
   GoneException,
@@ -62,8 +62,14 @@ describe('sendMessage handler', () => {
   it('persists the message and broadcasts to every listener', async () => {
     ddbMock.on(GetCommand, { TableName: 'ConnectionUsersTableTest' }).resolves({ Item: { userId: 'user-1' } })
     ddbMock.on(GetCommand, { TableName: 'ParticipantsTableTest' }).resolves({ Item: { conversationId: 'convo-1', userId: 'user-1' } })
-    ddbMock.on(QueryCommand).resolves({ Items: [{ connectionId: 'sender-conn' }, { connectionId: 'other-conn' }] })
+    ddbMock
+      .on(QueryCommand, { TableName: 'ConnectionsTableTest' })
+      .resolves({ Items: [{ connectionId: 'sender-conn' }, { connectionId: 'other-conn' }] })
+    ddbMock
+      .on(QueryCommand, { TableName: 'ParticipantsTableTest' })
+      .resolves({ Items: [{ conversationId: 'convo-1', userId: 'user-1', seen: true }, { conversationId: 'convo-1', userId: 'user-2', seen: true }] })
     ddbMock.on(PutCommand).resolves({})
+    ddbMock.on(UpdateCommand).resolves({})
     apiGwMock.on(PostToConnectionCommand).resolves({})
 
     const result = await handler(
@@ -78,13 +84,20 @@ describe('sendMessage handler', () => {
     expect(putCall.args[0].input.Item).toMatchObject({ conversationId: 'convo-1', senderId: 'user-1', body: 'hello' })
 
     expect(apiGwMock.commandCalls(PostToConnectionCommand)).toHaveLength(2)
+
+    // marks unread for the other participant only, not the sender
+    const updateCalls = ddbMock.commandCalls(UpdateCommand)
+    expect(updateCalls).toHaveLength(1)
+    expect(updateCalls[0].args[0].input.Key).toMatchObject({ userId: 'user-2' })
   })
 
   it('drops a stale connection that has gone away', async () => {
     ddbMock.on(GetCommand, { TableName: 'ConnectionUsersTableTest' }).resolves({ Item: { userId: 'user-1' } })
     ddbMock.on(GetCommand, { TableName: 'ParticipantsTableTest' }).resolves({ Item: { conversationId: 'convo-1', userId: 'user-1' } })
-    ddbMock.on(QueryCommand).resolves({ Items: [{ connectionId: 'stale-conn' }] })
+    ddbMock.on(QueryCommand, { TableName: 'ConnectionsTableTest' }).resolves({ Items: [{ connectionId: 'stale-conn' }] })
+    ddbMock.on(QueryCommand, { TableName: 'ParticipantsTableTest' }).resolves({ Items: [{ conversationId: 'convo-1', userId: 'user-1', seen: true }] })
     ddbMock.on(PutCommand).resolves({})
+    ddbMock.on(UpdateCommand).resolves({})
     ddbMock.on(DeleteCommand).resolves({})
     apiGwMock
       .on(PostToConnectionCommand)

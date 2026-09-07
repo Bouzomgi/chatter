@@ -7,7 +7,7 @@ import {
 import type { APIGatewayProxyWebsocketEventV2, APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda'
 import { forgetConnectionUser, getConnectionIdsForConversation, getConnectionUser, leaveConversation } from '../lib/connections.js'
 import { createMessage } from '../lib/messages.js'
-import { isParticipant } from '../lib/participants.js'
+import { isParticipant, markUnreadForOthers } from '../lib/participants.js'
 
 const sendMessageSchema = z.object({
   conversationId: z.string().min(1),
@@ -46,7 +46,10 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
 
   const message = await createMessage(conversationId, senderId, body)
-  await broadcast(managementClientFor(event), conversationId, message)
+  await Promise.all([
+    markUnreadForOthers(conversationId, senderId),
+    broadcast(managementClientFor(event), conversationId, message),
+  ])
 
   return { statusCode: 200, body: 'sent' }
 }

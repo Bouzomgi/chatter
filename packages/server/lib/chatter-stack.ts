@@ -78,6 +78,19 @@ export class ChatterStack extends Stack {
       sortKey: { name: 'sortKey', type: dynamodb.AttributeType.STRING }, // createdAt#messageId
     })
 
+    const conversationsTable = new dynamodb.Table(this, 'ConversationsTable', {
+      ...tableDefaults,
+      partitionKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
+    })
+
+    // Same uniqueness trick as UsersByEmail/UsersByUsername, applied to "does
+    // a conversation with exactly this participant set already exist" — see
+    // findOrCreateConversation() in src/lib/conversations.ts.
+    const conversationsByKeyTable = new dynamodb.Table(this, 'ConversationsByKeyTable', {
+      ...tableDefaults,
+      partitionKey: { name: 'participantSetKey', type: dynamodb.AttributeType.STRING },
+    })
+
     const connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
       ...tableDefaults,
       partitionKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
@@ -195,7 +208,7 @@ export class ChatterStack extends Stack {
     connectionUsersTable.grantReadWriteData(onDisconnectFn)
 
     const sendMessageFn = wsFn('SendMessageFn', '../src/ws/sendMessage.ts')
-    participantsTable.grantReadData(sendMessageFn)
+    participantsTable.grantReadWriteData(sendMessageFn) // read to check membership, write for markUnreadForOthers
     messagesTable.grantWriteData(sendMessageFn)
     connectionsTable.grantReadWriteData(sendMessageFn) // read to fan out, write to drop stale connections
     connectionUsersTable.grantReadWriteData(sendMessageFn) // read to identify the sender, write to drop stale ones
@@ -219,5 +232,72 @@ export class ChatterStack extends Stack {
     // postToConnection (the fan-out mechanism) is a call against this stage's
     // management API, not a DynamoDB permission — needs its own grant.
     webSocketStage.grantManagementApiAccess(sendMessageFn)
+
+    // --- REST: users/conversations ---
+    const restEnv = {
+      JWT_SECRET: props.jwtSecret,
+      USERS_TABLE: usersTable.tableName,
+      PARTICIPANTS_TABLE: participantsTable.tableName,
+      MESSAGES_TABLE: messagesTable.tableName,
+      CONVERSATIONS_TABLE: conversationsTable.tableName,
+      CONVERSATIONS_BY_KEY_TABLE: conversationsByKeyTable.tableName,
+    }
+
+    const restFn = (name: string, entry: string) =>
+      new NodejsFunction(this, name, {
+        entry: path.join(__dirname, entry),
+        runtime: Runtime.NODEJS_20_X,
+        timeout: Duration.seconds(10),
+        environment: restEnv,
+      })
+
+    const getUsersFn = restFn('GetUsersFn', '../src/http/users/getUsers.ts')
+    const updateMeFn = restFn('UpdateMeFn', '../src/http/users/updateMe.ts')
+    const createConversationFn = restFn('CreateConversationFn', '../src/http/conversations/createConversation.ts')
+    const getConversationsFn = restFn('GetConversationsFn', '../src/http/conversations/getConversations.ts')
+    const getMessagesFn = restFn('GetMessagesFn', '../src/http/conversations/getMessages.ts')
+
+    usersTable.grantReadData(getUsersFn)
+    usersTable.grantReadWriteData(updateMeFn)
+
+    usersTable.grantReadData(createConversationFn)
+    participantsTable.grantReadWriteData(createConversationFn)
+    conversationsTable.grantReadWriteData(createConversationFn)
+    conversationsByKeyTable.grantReadWriteData(createConversationFn)
+
+    usersTable.grantReadData(getConversationsFn)
+    participantsTable.grantReadData(getConversationsFn)
+    messagesTable.grantReadData(getConversationsFn)
+    conversationsTable.grantReadData(getConversationsFn)
+
+    participantsTable.grantReadData(getMessagesFn)
+    messagesTable.grantReadData(getMessagesFn)
+    conversationsTable.grantReadData(getMessagesFn)
+
+    httpApi.addRoutes({
+      path: '/users',
+      methods: [HttpMethod.GET],
+      integration: new HttpLambdaIntegration('GetUsersIntegration', getUsersFn),
+    })
+    httpApi.addRoutes({
+      path: '/users/me',
+      methods: [HttpMethod.PUT],
+      integration: new HttpLambdaIntegration('UpdateMeIntegration', updateMeFn),
+    })
+    httpApi.addRoutes({
+      path: '/conversations',
+      methods: [HttpMethod.POST],
+      integration: new HttpLambdaIntegration('CreateConversationIntegration', createConversationFn),
+    })
+    httpApi.addRoutes({
+      path: '/conversations',
+      methods: [HttpMethod.GET],
+      integration: new HttpLambdaIntegration('GetConversationsIntegration', getConversationsFn),
+    })
+    httpApi.addRoutes({
+      path: '/conversations/{id}/messages',
+      methods: [HttpMethod.GET],
+      integration: new HttpLambdaIntegration('GetMessagesIntegration', getMessagesFn),
+    })
   }
 }
