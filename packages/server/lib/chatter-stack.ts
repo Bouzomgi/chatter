@@ -72,7 +72,7 @@ export class ChatterStack extends Stack {
       projectionType: dynamodb.ProjectionType.KEYS_ONLY,
     })
 
-    new dynamodb.Table(this, 'MessagesTable', {
+    const messagesTable = new dynamodb.Table(this, 'MessagesTable', {
       ...tableDefaults,
       partitionKey: { name: 'conversationId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sortKey', type: dynamodb.AttributeType.STRING }, // createdAt#messageId
@@ -167,11 +167,10 @@ export class ChatterStack extends Stack {
     })
 
     // --- WebSocket layer ---
-    // $connect/$disconnect are the whole real-time surface for now — the
-    // send-message route and its fan-out land in the next roadmap step.
     const wsEnv = {
       JWT_SECRET: props.jwtSecret,
       PARTICIPANTS_TABLE: participantsTable.tableName,
+      MESSAGES_TABLE: messagesTable.tableName,
       CONNECTIONS_TABLE: connectionsTable.tableName,
       CONNECTION_USERS_TABLE: connectionUsersTable.tableName,
     }
@@ -195,17 +194,30 @@ export class ChatterStack extends Stack {
     connectionsTable.grantWriteData(onDisconnectFn)
     connectionUsersTable.grantReadWriteData(onDisconnectFn)
 
+    const sendMessageFn = wsFn('SendMessageFn', '../src/ws/sendMessage.ts')
+    participantsTable.grantReadData(sendMessageFn)
+    messagesTable.grantWriteData(sendMessageFn)
+    connectionsTable.grantReadWriteData(sendMessageFn) // read to fan out, write to drop stale connections
+    connectionUsersTable.grantReadWriteData(sendMessageFn) // read to identify the sender, write to drop stale ones
+
     const webSocketApi = new WebSocketApi(this, 'WebSocketApi', {
       connectRouteOptions: { integration: new WebSocketLambdaIntegration('OnConnectIntegration', onConnectFn) },
       disconnectRouteOptions: {
         integration: new WebSocketLambdaIntegration('OnDisconnectIntegration', onDisconnectFn),
       },
     })
+    webSocketApi.addRoute('sendMessage', {
+      integration: new WebSocketLambdaIntegration('SendMessageIntegration', sendMessageFn),
+    })
 
-    new WebSocketStage(this, 'WebSocketStage', {
+    const webSocketStage = new WebSocketStage(this, 'WebSocketStage', {
       webSocketApi,
       stageName: 'prod',
       autoDeploy: true,
     })
+
+    // postToConnection (the fan-out mechanism) is a call against this stage's
+    // management API, not a DynamoDB permission — needs its own grant.
+    webSocketStage.grantManagementApiAccess(sendMessageFn)
   }
 }

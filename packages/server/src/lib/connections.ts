@@ -1,4 +1,4 @@
-import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { ddb, TableNames } from './dynamo.js'
 
 // ConnectionsTable (conversationId, connectionId) is Socket.io's room
@@ -21,6 +21,20 @@ export async function leaveConversation(conversationId: string, connectionId: st
       Key: { conversationId, connectionId },
     }),
   )
+}
+
+// Who's listening to this conversation right now — this is the manual
+// fan-out list that stands in for Socket.io's `io.to(room).emit()`.
+export async function getConnectionIdsForConversation(conversationId: string): Promise<string[]> {
+  const result = await ddb.send(
+    new QueryCommand({
+      TableName: TableNames.connections,
+      KeyConditionExpression: 'conversationId = :conversationId',
+      ExpressionAttributeValues: { ':conversationId': conversationId },
+      ProjectionExpression: 'connectionId',
+    }),
+  )
+  return (result.Items ?? []).map((item) => item.connectionId as string)
 }
 
 // ConnectionUsersTable (connectionId -> userId) has no Socket.io equivalent —
