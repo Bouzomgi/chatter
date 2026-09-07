@@ -1,8 +1,11 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib'
+import { CfnOutput, Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib'
 import { Construct } from 'constructs'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
+import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
 import { Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { HttpApi, HttpMethod, CorsHttpMethod, WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2'
@@ -20,6 +23,14 @@ export interface ChatterStackProps extends StackProps {
    * override this (see the deploy pipeline step in CLAUDE.md's roadmap).
    */
   jwtSecret: string
+  /**
+   * The deployed client's origin, for credentialed CORS (which the spec
+   * forbids combining with a wildcard). Chicken-and-egg on a from-scratch
+   * deploy: the CloudFront domain below doesn't exist until this stack
+   * deploys once. Defaults to localhost for that first deploy; pass the real
+   * CloudFront domain on the second deploy once it's known (see DEPLOY.md).
+   */
+  clientOrigin?: string
 }
 
 // Table shapes mirror the data model in the Lambda design doc. Fields land
@@ -115,7 +126,7 @@ export class ChatterStack extends Stack {
         // even before there's a real deployment. Swap in the CloudFront
         // domain once the client is deployed (roadmap step 7).
         allowCredentials: true,
-        allowOrigins: ['http://localhost:5173'],
+        allowOrigins: [props.clientOrigin ?? 'http://localhost:5173'],
       },
     })
 
@@ -314,5 +325,42 @@ export class ChatterStack extends Stack {
       methods: [HttpMethod.PATCH],
       integration: new HttpLambdaIntegration('MarkReadIntegration', markReadFn),
     })
+
+    // --- Static client hosting ---
+    // CDK only provisions the bucket and distribution — the actual build
+    // artifacts are synced in by the deploy workflow (aws s3 sync + a
+    // CloudFront invalidation), not by CDK itself. That decouples "infra
+    // changed" deploys from "client code changed" deploys, and avoids the
+    // ordering problem of needing the client already built (with this
+    // stack's own API URLs baked in) before this stack finishes deploying.
+    const clientBucket = new s3.Bucket(this, 'ClientBucket', {
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    })
+
+    const distribution = new cloudfront.Distribution(this, 'ClientDistribution', {
+      defaultRootObject: 'index.html',
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(clientBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      },
+      // React Router does client-side routing — any path CloudFront can't
+      // find in the bucket (e.g. /settings on a hard refresh) should still
+      // serve index.html and let the client router take over.
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
+      ],
+    })
+
+    // --- Outputs ---
+    // Consumed by the deploy workflow: build the client against the API
+    // URLs, then sync it to the bucket and invalidate the distribution.
+    new CfnOutput(this, 'HttpApiUrl', { value: httpApi.apiEndpoint })
+    new CfnOutput(this, 'WebSocketUrl', { value: webSocketStage.url })
+    new CfnOutput(this, 'ClientBucketName', { value: clientBucket.bucketName })
+    new CfnOutput(this, 'ClientDistributionId', { value: distribution.distributionId })
+    new CfnOutput(this, 'ClientDistributionDomain', { value: distribution.distributionDomainName })
   }
 }

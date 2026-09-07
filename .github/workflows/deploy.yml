@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# id-token: write is what lets configure-aws-credentials assume the deploy
+# role via OIDC — no long-lived AWS access keys stored as a secret.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with: { version: 9.15.4 }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      # TODO: pin to a commit SHA once verified, matching every other action
+      # in this repo (see DEPLOY.md for the role/secrets this depends on).
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Provisions/updates the backend first — the client build below needs
+      # this deploy's own API URLs, so backend and frontend can't deploy in
+      # parallel the way the two CI jobs for testing usually would.
+      - name: Deploy backend (CDK)
+        working-directory: packages/server
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Unset on the very first deploy — the CloudFront domain this would
+          # point at doesn't exist yet. See DEPLOY.md for the two-step
+          # bootstrap: deploy once, read ClientDistributionDomain from the
+          # output, set the CLIENT_ORIGIN repo variable, deploy again.
+          CLIENT_ORIGIN: ${{ vars.CLIENT_ORIGIN }}
+        run: pnpm exec cdk deploy --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Read stack outputs
+        id: outputs
+        working-directory: packages/server
+        run: |
+          echo "http_api_url=$(jq -r '.ChatterStack.HttpApiUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "ws_url=$(jq -r '.ChatterStack.WebSocketUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "bucket=$(jq -r '.ChatterStack.ClientBucketName' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(jq -r '.ChatterStack.ClientDistributionId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "distribution_domain=$(jq -r '.ChatterStack.ClientDistributionDomain' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build client
+        working-directory: packages/client
+        env:
+          VITE_API_URL: ${{ steps.outputs.outputs.http_api_url }}
+          VITE_WS_URL: ${{ steps.outputs.outputs.ws_url }}
+        run: pnpm run build
+
+      - name: Sync client to S3
+        run: aws s3 sync packages/client/dist "s3://${{ steps.outputs.outputs.bucket }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id "${{ steps.outputs.outputs.distribution_id }}" --paths "/*"
+
+      - name: Print deployed URL
+        run: echo "Client deployed to https://${{ steps.outputs.outputs.distribution_domain }}"
