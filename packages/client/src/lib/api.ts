@@ -1,0 +1,32 @@
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(path, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  })
+  if (res.status === 401) {
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`)
+  }
+  return res
+}
+
+export const api = {
+  get: (path: string) =>
+    apiFetch(path),
+
+  post: <T>(path: string, body: T) =>
+    apiFetch(path, { method: 'POST', body: JSON.stringify(body) }),
+
+  put: <T>(path: string, body: T) =>
+    apiFetch(path, { method: 'PUT', body: JSON.stringify(body) }),
+
+  patch: (path: string) =>
+    apiFetch(path, { method: 'PATCH' }),
+
+  delete: (path: string) =>
+    apiFetch(path, { method: 'DELETE' }),
+}

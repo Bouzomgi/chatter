@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  min-width: 650px;
+  margin: 0;
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 18px;
+}
+
+.header-action {
+  color: black;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 30px;
+  font-weight: 400;
+  font-family: inherit;
+}
+
+.header-action:hover {
+  color: white;
+}
+
+@keyframes shake {
+  0%, 40%, 80%  { transform: rotate(4deg); }
+  20%, 60%, 100% { transform: rotate(-4deg); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out 1;
+}
+
+@keyframes dot-shrink {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0); opacity: 0; }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}

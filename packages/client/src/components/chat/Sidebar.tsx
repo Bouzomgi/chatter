@@ -1,0 +1,75 @@
+import { useEffect, useRef } from 'react'
+import type { Conversation, UserSummary } from '@chatter/shared'
+import ConversationItem from './ConversationItem.js'
+import UserItem from './UserItem.js'
+
+interface Props {
+  conversations: Conversation[]
+  users: UserSummary[]
+  activeConversationId: string | null
+  showUserList: boolean
+  pendingUserIds: Set<string>
+  onlineUserIds: Set<string>
+  onSelectConversation: (id: string) => void
+  onTogglePendingUser: (user: UserSummary) => void
+  onToggleUserList: () => void
+}
+
+export default function Sidebar({
+  conversations,
+  users,
+  activeConversationId,
+  showUserList,
+  pendingUserIds,
+  onlineUserIds,
+  onSelectConversation,
+  onTogglePendingUser,
+  onToggleUserList,
+}: Props) {
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (showUserList) {
+      const first = listRef.current?.querySelector<HTMLElement>('[tabindex="0"]')
+      first?.focus()
+    }
+  }, [showUserList])
+
+  return (
+    <div data-testid="sidebar" className="flex flex-col w-[350px] shrink-0 bg-[#e0d0c180] border-r border-white">
+      <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden">
+        {showUserList && (
+          <div className="px-4 pt-4 pb-2 text-[13px] font-semibold text-gray-400 uppercase tracking-widest border-b-2 border-white">
+            Start a New Chat
+          </div>
+        )}
+        {showUserList
+          ? users.map(u => (
+              <UserItem
+                key={u.id}
+                user={u}
+                selected={pendingUserIds.has(u.id)}
+                onClick={() => onTogglePendingUser(u)}
+              />
+            ))
+          : conversations.map(c => (
+              <ConversationItem
+                key={c.id}
+                conversation={c}
+                isActive={c.id === activeConversationId}
+                isOnline={c.participants.some(p => onlineUserIds.has(p.id))}
+                onClick={() => onSelectConversation(c.id)}
+              />
+            ))}
+      </div>
+      <button
+        data-testid="sidebar-toggle"
+        aria-label={showUserList ? 'Back to conversations' : 'Start a new chat'}
+        onClick={onToggleUserList}
+        className="h-[63px] shrink-0 text-[22px] font-normal hover:bg-[#e0d0c1cc] border-t border-white cursor-pointer bg-transparent"
+      >
+        {showUserList ? 'back' : 'chat!'}
+      </button>
+    </div>
+  )
+}
