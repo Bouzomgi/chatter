@@ -12,7 +12,7 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn()
 const NOW = new Date('2026-05-24T15:00:00.000Z')
 
 function msg(id: string, senderId: string, createdAt: string, body?: string): Message {
-  return { id, conversationId: 'c1', senderId, body: body ?? `body-${id}`, createdAt }
+  return { id, conversationId: 'c1', senderId, body: body ?? `body-${id}`, createdAt, cursor: `${createdAt}#${id}` }
 }
 
 const alice: UserSummary = { id: 'u1', username: 'alice', avatarIndex: 0 }

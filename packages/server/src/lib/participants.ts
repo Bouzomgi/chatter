@@ -65,3 +65,14 @@ export async function markUnreadForOthers(conversationId: string, exceptUserId: 
       ),
   )
 }
+
+export async function markRead(conversationId: string, userId: string): Promise<void> {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TableNames.participants,
+      Key: { conversationId, userId },
+      UpdateExpression: 'SET seen = :seen',
+      ExpressionAttributeValues: { ':seen': true },
+    }),
+  )
+}

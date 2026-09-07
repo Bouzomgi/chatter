@@ -171,7 +171,7 @@ export function useChat() {
     }
 
     // Re-fetch on reconnect so conversations created while disconnected become visible.
-    socket.io.on('reconnect', refetchConversations)
+    socket.on('reconnect', refetchConversations)
 
     function onMessageNew(message: Message) {
       dispatch({ type: 'APPEND_MESSAGE', message })
@@ -186,7 +186,7 @@ export function useChat() {
 
     return () => {
       socket.off('message:new', onMessageNew)
-      socket.io.off('reconnect', refetchConversations)
+      socket.off('reconnect', refetchConversations)
       setActiveConversationId(null)
     }
   // Intentionally runs once on mount; setActiveConversationId is stable
@@ -216,7 +216,7 @@ export function useChat() {
     const oldest = msgs[0]
     if (!oldest) return
     const data: { messages: Message[]; hasMore: boolean } = await api
-      .get(`/conversations/${id}/messages?before=${oldest.id}`)
+      .get(`/conversations/${id}/messages?before=${oldest.cursor}`)
       .then(r => r.json())
     dispatch({ type: 'PREPEND_MESSAGES', conversationId: id, messages: data.messages, hasMore: data.hasMore })
   }
@@ -262,22 +262,19 @@ export function useChat() {
       const conversation: Conversation = await api
         .post('/conversations', { participantIds: state.pendingUsers.map(u => u.id) })
         .then(r => r.json())
-      const message: Message = await api
-        .post(`/conversations/${conversation.id}/messages`, { body })
-        .then(r => r.json())
-      // Socket won't deliver message:new for a brand-new room (joined at connect
-      // time, before this conversation existed), so append it directly.
       dispatch({ type: 'UPSERT_CONVERSATION', conversation })
-      dispatch({ type: 'APPEND_MESSAGE', message })
       activeConvRef.current = conversation.id
       setActiveConversationId(conversation.id)
-      api.patch(`/conversations/${conversation.id}/read`)
+      // The socket hasn't joined this brand-new conversation's room (it only
+      // joins rooms that existed when it connected) — the server always
+      // echoes the sender's own message back regardless, so it still arrives
+      // through the normal message:new handler above like any other send.
+      socket.sendMessage(conversation.id, body)
       return
     }
     const id = state.activeConversationId
     if (!id) return
-    const message: Message = await api.post(`/conversations/${id}/messages`, { body }).then(r => r.json())
-    dispatch({ type: 'APPEND_MESSAGE', message })
+    socket.sendMessage(id, body)
   }
 
   const activeMessages = state.activeConversationId

@@ -21,6 +21,10 @@ export interface Message {
   senderId: UserId
   body: string
   createdAt: string
+  // Opaque pagination cursor — pass back as `before` to fetch the next page.
+  // Not a bare message id: the server's storage key doesn't support looking
+  // a message up by id alone, so this is a different (still opaque) value.
+  cursor: string
 }
 
 export interface Conversation {

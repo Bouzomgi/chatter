@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken'
+import jwt, { type SignOptions } from 'jsonwebtoken'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 
 export interface AuthPayload {
@@ -7,8 +7,8 @@ export interface AuthPayload {
 
 const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60
 
-export function issueToken(userId: string): string {
-  return jwt.sign({ userId } satisfies AuthPayload, process.env.JWT_SECRET!, { expiresIn: '7d' })
+export function issueToken(userId: string, expiresIn: SignOptions['expiresIn'] = '7d'): string {
+  return jwt.sign({ userId } satisfies AuthPayload, process.env.JWT_SECRET!, { expiresIn })
 }
 
 // Mirrors the original project's COOKIE_OPTS, expressed as a Set-Cookie

@@ -48,7 +48,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const message = await createMessage(conversationId, senderId, body)
   await Promise.all([
     markUnreadForOthers(conversationId, senderId),
-    broadcast(managementClientFor(event), conversationId, message),
+    broadcast(managementClientFor(event), conversationId, connectionId, message),
   ])
 
   return { statusCode: 200, body: 'sent' }
@@ -58,12 +58,20 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 // room broadcast is one call; here it's a query for who's listening plus a
 // postToConnection loop. A connection that's gone stale (closed without a
 // clean $disconnect) gets cleaned out of both tables when it 410s.
+//
+// senderConnectionId is always included even if Connections has no entry for
+// it yet — true right after creating a brand-new conversation, since $connect
+// only joins conversations that existed when the socket opened. Without this,
+// the sender would send a message into a conversation their own connection
+// was never told about, and get nothing back.
 async function broadcast(
   client: ApiGatewayManagementApiClient,
   conversationId: string,
+  senderConnectionId: string,
   payload: unknown,
 ): Promise<void> {
-  const connectionIds = await getConnectionIdsForConversation(conversationId)
+  const listenerIds = await getConnectionIdsForConversation(conversationId)
+  const connectionIds = [...new Set([...listenerIds, senderConnectionId])]
   const data = Buffer.from(JSON.stringify({ type: 'message:new', message: payload }))
 
   await Promise.all(

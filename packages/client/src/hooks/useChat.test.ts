@@ -15,10 +15,7 @@ const { socketHandlers, mockSocket } = vi.hoisted(() => {
     off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       socketHandlers[event] = (socketHandlers[event] ?? []).filter(h => h !== handler)
     }),
-    io: {
-      on: vi.fn(),
-      off: vi.fn(),
-    },
+    sendMessage: vi.fn(),
   }
   return { socketHandlers, mockSocket }
 })
@@ -61,7 +58,15 @@ const conv2: Conversation = {
 }
 
 function makeMsg(override: Partial<Message> = {}): Message {
-  return { id: 'm1', conversationId: 'conv-1', senderId: 'user-2', body: 'hi', createdAt: '2024-01-01T10:00:00Z', ...override }
+  return {
+    id: 'm1',
+    conversationId: 'conv-1',
+    senderId: 'user-2',
+    body: 'hi',
+    createdAt: '2024-01-01T10:00:00Z',
+    cursor: '2024-01-01T10:00:00Z#m1',
+    ...override,
+  }
 }
 
 const noMessages = { messages: [], hasMore: false }
@@ -76,6 +81,7 @@ function emitSocket(event: string, payload: unknown) {
 beforeEach(() => {
   Object.keys(socketHandlers).forEach(k => delete socketHandlers[k])
   mockSetActiveConversationId.mockReset()
+  mockSocket.sendMessage.mockReset()
   mockApi.patch.mockResolvedValue({})
   // Default: one conversation, empty messages
   mockApi.get.mockImplementation((path: string) => {
@@ -167,7 +173,7 @@ describe('useChat — loadMore', () => {
     mockApi.get.mockImplementation((path: string) => {
       if (path === '/conversations') return Promise.resolve({ json: () => Promise.resolve([conv1]) })
       if (path === '/conversations/conv-1/messages') return Promise.resolve({ json: () => Promise.resolve(someMsgs) })
-      if (path === '/conversations/conv-1/messages?before=m1') return Promise.resolve({ json: () => Promise.resolve({ messages: [older], hasMore: false }) })
+      if (path === `/conversations/conv-1/messages?before=${makeMsg().cursor}`) return Promise.resolve({ json: () => Promise.resolve({ messages: [older], hasMore: false }) })
       return Promise.resolve({ json: () => Promise.resolve(null) })
     })
     const { result } = renderHook(() => useChat())
@@ -185,7 +191,7 @@ describe('useChat — loadMore', () => {
     mockApi.get.mockImplementation((path: string) => {
       if (path === '/conversations') return Promise.resolve({ json: () => Promise.resolve([conv1]) })
       if (path === '/conversations/conv-1/messages') return Promise.resolve({ json: () => Promise.resolve(someMsgs) })
-      if (path === '/conversations/conv-1/messages?before=m1') return Promise.resolve({ json: () => Promise.resolve({ messages: [older], hasMore: true }) })
+      if (path === `/conversations/conv-1/messages?before=${makeMsg().cursor}`) return Promise.resolve({ json: () => Promise.resolve({ messages: [older], hasMore: true }) })
       return Promise.resolve({ json: () => Promise.resolve(null) })
     })
     const { result } = renderHook(() => useChat())
@@ -257,29 +263,22 @@ describe('useChat — socket message:new', () => {
 })
 
 describe('useChat — sendMessage', () => {
-  it('posts to the active conversation and immediately appends the message', async () => {
-    const sentMsg = makeMsg({ id: 'm-sent', body: 'hello', senderId: 'user-1' })
-    mockApi.post.mockResolvedValue({ json: () => Promise.resolve(sentMsg) })
+  it('sends over the socket; the message appears once the server echoes it back', async () => {
     const { result } = renderHook(() => useChat())
     await waitFor(() => expect(result.current.state.activeConversationId).toBe('conv-1'))
 
     await act(async () => { await result.current.sendMessage('hello') })
 
-    expect(mockApi.post).toHaveBeenCalledWith('/conversations/conv-1/messages', { body: 'hello' })
-    expect(result.current.activeMessages).toHaveLength(1)
-    expect(result.current.activeMessages![0].id).toBe('m-sent')
-  })
+    expect(mockSocket.sendMessage).toHaveBeenCalledWith('conv-1', 'hello')
+    // Nothing appended yet — sendMessage is fire-and-forget; the message only
+    // shows up once message:new arrives, same as for anyone else's messages.
+    expect(result.current.activeMessages).toHaveLength(0)
 
-  it('does not duplicate a message when the socket echo arrives after immediate append', async () => {
     const sentMsg = makeMsg({ id: 'm-sent', body: 'hello', senderId: 'user-1' })
-    mockApi.post.mockResolvedValue({ json: () => Promise.resolve(sentMsg) })
-    const { result } = renderHook(() => useChat())
-    await waitFor(() => expect(result.current.state.activeConversationId).toBe('conv-1'))
-
-    await act(async () => { await result.current.sendMessage('hello') })
     act(() => { emitSocket('message:new', sentMsg) })
 
     expect(result.current.activeMessages).toHaveLength(1)
+    expect(result.current.activeMessages![0].id).toBe('m-sent')
   })
 
   it('is a no-op when there is no active conversation and no pending users', async () => {
@@ -290,18 +289,14 @@ describe('useChat — sendMessage', () => {
     const { result } = renderHook(() => useChat())
     await waitFor(() => expect(result.current.state.loaded).toBe(true))
 
-    mockApi.post.mockReset()
     await act(async () => { await result.current.sendMessage('hello') })
 
-    expect(mockApi.post).not.toHaveBeenCalled()
+    expect(mockSocket.sendMessage).not.toHaveBeenCalled()
   })
 
-  it('creates a conversation then sends the message when pending users are set', async () => {
+  it('creates a conversation then sends the first message over the socket', async () => {
     const newConv: Conversation = { ...conv2, id: 'conv-new' }
-    const newMsg = makeMsg({ id: 'm-new', conversationId: 'conv-new' })
-    mockApi.post
-      .mockResolvedValueOnce({ json: () => Promise.resolve(newConv) })  // POST /conversations
-      .mockResolvedValueOnce({ json: () => Promise.resolve(newMsg) })   // POST /conversations/conv-new/messages
+    mockApi.post.mockResolvedValueOnce({ json: () => Promise.resolve(newConv) }) // POST /conversations
 
     // Simulate user list: handleToggleUserList then togglePendingUser(carol)
     mockApi.get.mockImplementation((path: string) => {
@@ -318,7 +313,7 @@ describe('useChat — sendMessage', () => {
     await act(async () => { await result.current.sendMessage('hi carol') })
 
     expect(mockApi.post).toHaveBeenCalledWith('/conversations', { participantIds: ['user-3'] })
-    expect(mockApi.post).toHaveBeenCalledWith('/conversations/conv-new/messages', { body: 'hi carol' })
+    expect(mockSocket.sendMessage).toHaveBeenCalledWith('conv-new', 'hi carol')
     expect(result.current.state.activeConversationId).toBe('conv-new')
   })
 })

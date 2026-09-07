@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth.js'
 import FormField from '../components/FormField.js'
 import SubmissionArrow from '../components/SubmissionArrow.js'
+import { API_BASE_URL } from '../lib/config.js'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -28,7 +29,7 @@ export default function Login() {
       return
     }
     try {
-      const res = await fetch('/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

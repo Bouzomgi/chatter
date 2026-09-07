@@ -12,11 +12,21 @@ export interface User {
   createdAt: string
 }
 
-export type PublicUser = Omit<User, 'passwordHash'>
+// The wire shape the client (and @chatter/shared's User type) expects: `id`,
+// not `userId`. Storage keeps `userId` as its key name — that's an internal
+// DynamoDB decision, not the API contract — so every response that includes
+// a user goes through this rename at the boundary.
+export interface PublicUser {
+  id: string
+  username: string
+  email: string
+  avatarIndex: number
+  createdAt: string
+}
 
 export function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _passwordHash, ...publicUser } = user
-  return publicUser
+  const { userId, passwordHash: _passwordHash, ...rest } = user
+  return { id: userId, ...rest }
 }
 
 export class UsernameOrEmailTakenError extends Error {}
@@ -100,15 +110,23 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
   return (result.Responses?.[TableNames.users] as User[] | undefined) ?? []
 }
 
+export interface UserSummary {
+  id: string
+  username: string
+  avatarIndex: number
+}
+
 // No index makes "every user but me" cheap in DynamoDB the way it was with a
 // single indexed SQL query — this is a full table scan. Fine at this app's
 // scale (a personal contact list); would need a different design well before
-// it wasn't.
-export async function listUsersExcept(userId: string): Promise<PublicUser[]> {
+// it wasn't. Deliberately narrower than PublicUser — this list is visible to
+// any authenticated user, so it excludes email the way the original route's
+// `select` clause did.
+export async function listUsersExcept(userId: string): Promise<UserSummary[]> {
   const result = await ddb.send(new ScanCommand({ TableName: TableNames.users }))
   const users = ((result.Items as User[] | undefined) ?? [])
     .filter((user) => user.userId !== userId)
-    .map(toPublicUser)
+    .map((user) => ({ id: user.userId, username: user.username, avatarIndex: user.avatarIndex }))
   users.sort((a, b) => a.username.localeCompare(b.username))
   return users
 }

@@ -24,8 +24,11 @@ function fromItem({ sortKey, ...message }: MessageItem): MessageWithCursor {
 
 // sortKey is `${createdAt}#${id}` — ISO-8601 timestamps sort correctly as
 // plain strings, so this keeps a conversation's messages in order without
-// needing a separate index.
-export async function createMessage(conversationId: string, senderId: string, body: string): Promise<Message> {
+// needing a separate index. Every message the client sees — whether pushed
+// live over the socket or fetched via listMessages — carries the same
+// `cursor` field, so the client never has to special-case where a message
+// came from before paginating from it.
+export async function createMessage(conversationId: string, senderId: string, body: string): Promise<MessageWithCursor> {
   const message: Message = {
     conversationId,
     id: randomUUID(),
@@ -33,18 +36,19 @@ export async function createMessage(conversationId: string, senderId: string, bo
     body,
     createdAt: new Date().toISOString(),
   }
+  const sortKey = toSortKey(message)
 
   await ddb.send(
     new PutCommand({
       TableName: TableNames.messages,
-      Item: { ...message, sortKey: toSortKey(message) },
+      Item: { ...message, sortKey },
     }),
   )
 
-  return message
+  return { ...message, cursor: sortKey }
 }
 
-export async function getLatestMessage(conversationId: string): Promise<Message | null> {
+export async function getLatestMessage(conversationId: string): Promise<MessageWithCursor | null> {
   const result = await ddb.send(
     new QueryCommand({
       TableName: TableNames.messages,
@@ -55,9 +59,7 @@ export async function getLatestMessage(conversationId: string): Promise<Message 
     }),
   )
   const item = result.Items?.[0] as MessageItem | undefined
-  if (!item) return null
-  const { cursor: _cursor, ...message } = fromItem(item)
-  return message
+  return item ? fromItem(item) : null
 }
 
 // The original project's cursor was a bare message id, looked up via a
