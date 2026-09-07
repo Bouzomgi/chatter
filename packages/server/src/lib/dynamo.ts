@@ -14,6 +14,7 @@ export const TableNames = {
   usersByEmail: process.env.USERS_BY_EMAIL_TABLE!,
   usersByUsername: process.env.USERS_BY_USERNAME_TABLE!,
   participants: process.env.PARTICIPANTS_TABLE!,
+  messages: process.env.MESSAGES_TABLE!,
   connections: process.env.CONNECTIONS_TABLE!,
   connectionUsers: process.env.CONNECTION_USERS_TABLE!,
 }

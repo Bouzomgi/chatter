@@ -9,6 +9,7 @@ export default defineConfig({
       USERS_BY_EMAIL_TABLE: 'UsersByEmailTableTest',
       USERS_BY_USERNAME_TABLE: 'UsersByUsernameTableTest',
       PARTICIPANTS_TABLE: 'ParticipantsTableTest',
+      MESSAGES_TABLE: 'MessagesTableTest',
       CONNECTIONS_TABLE: 'ConnectionsTableTest',
       CONNECTION_USERS_TABLE: 'ConnectionUsersTableTest',
     },
