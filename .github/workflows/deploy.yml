@@ -40,6 +40,9 @@ jobs:
           # bootstrap: deploy once, read ClientDistributionDomain from the
           # output, set the CLIENT_ORIGIN repo variable, deploy again.
           CLIENT_ORIGIN: ${{ vars.CLIENT_ORIGIN }}
+          # Optional custom domain (apex of a Route 53 zone in this account).
+          # When set, CLIENT_ORIGIN can stay unset — it defaults to this.
+          DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
         run: pnpm exec cdk deploy --require-approval never --outputs-file cdk-outputs.json
 
       - name: Read stack outputs

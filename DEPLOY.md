@@ -42,10 +42,13 @@ No long-lived AWS access keys stored as GitHub secrets — the workflow assumes 
 - `JWT_SECRET` — a real secret, e.g. `openssl rand -base64 32`. **Must** be at least 32 characters (the server throws at cold-start otherwise, same as the original project).
 
 **Variables** (same page, Variables tab):
-- `AWS_REGION` — e.g. `us-east-1`
+- `AWS_REGION` — e.g. `us-east-1`. Must be `us-east-1` if you use a custom domain.
+- `DOMAIN_NAME` — optional, e.g. `chitchatter.link`. See "Custom domain" below; if set, skip the two-step bootstrap.
 - `CLIENT_ORIGIN` — leave unset for now (see the bootstrap note below)
 
-## 4. First deploy — a two-step bootstrap
+## 4. First deploy — a two-step bootstrap (no custom domain)
+
+Skip this section if you set `DOMAIN_NAME` — see "Custom domain" below.
 
 `ChatterStack`'s CORS config needs the client's real origin (credentialed CORS can't use a wildcard), but that origin is the CloudFront domain the stack itself creates — it doesn't exist before the first deploy.
 
@@ -53,6 +56,17 @@ No long-lived AWS access keys stored as GitHub secrets — the workflow assumes 
 2. Find `ClientDistributionDomain` in the workflow's "Read stack outputs" step (or `aws cloudformation describe-stacks --stack-name ChatterStack`).
 3. Set the `CLIENT_ORIGIN` repo variable to `https://<that domain>`.
 4. Push again (or re-run the workflow). This redeploy updates CORS to the real origin — everything after this is a normal single-step deploy.
+
+## Custom domain (optional)
+
+Set the `DOMAIN_NAME` repo variable (e.g. `chitchatter.link`) to serve the client from your own domain instead of `*.cloudfront.net`. Requirements:
+
+- The domain is the **apex of a Route 53 hosted zone in the same AWS account** (the stack looks the zone up by name).
+- `AWS_REGION` is `us-east-1` — CloudFront only accepts ACM certificates issued there, and the stack throws otherwise.
+
+The stack then issues a DNS-validated certificate (validation records are added to the zone automatically), attaches it to the distribution, and creates `A`/`AAAA` alias records. `CLIENT_ORIGIN` defaults to `https://<DOMAIN_NAME>`, so the two-step bootstrap above is unnecessary — leave `CLIENT_ORIGIN` unset.
+
+The first deploy waits on certificate validation, usually a few minutes. Pointing the apex at CloudFront replaces any existing record for that name, so take down or migrate whatever currently serves the domain first.
 
 ## What the pipeline actually does
 

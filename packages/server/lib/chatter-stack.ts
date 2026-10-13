@@ -6,6 +6,9 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront'
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins'
+import * as acm from 'aws-cdk-lib/aws-certificatemanager'
+import * as route53 from 'aws-cdk-lib/aws-route53'
+import * as targets from 'aws-cdk-lib/aws-route53-targets'
 import { Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { HttpApi, HttpMethod, CorsHttpMethod, WebSocketApi, WebSocketStage } from 'aws-cdk-lib/aws-apigatewayv2'
@@ -31,6 +34,16 @@ export interface ChatterStackProps extends StackProps {
    * CloudFront domain on the second deploy once it's known (see DEPLOY.md).
    */
   clientOrigin?: string
+  /**
+   * Custom domain (e.g. `chitchatter.link`) to serve the client from. Must
+   * be the apex of a Route 53 hosted zone in this account. When set, the
+   * stack issues a DNS-validated certificate, attaches it to the
+   * distribution, and adds alias records — and `clientOrigin` defaults to
+   * `https://<domainName>`, so no two-step bootstrap is needed. Requires the
+   * stack to be deployed to us-east-1 (CloudFront only accepts certs there)
+   * with a concrete `env`, since the zone is looked up at synth time.
+   */
+  domainName?: string
 }
 
 // Table shapes mirror the data model in the Lambda design doc. Fields land
@@ -38,6 +51,10 @@ export interface ChatterStackProps extends StackProps {
 export class ChatterStack extends Stack {
   constructor(scope: Construct, id: string, props: ChatterStackProps) {
     super(scope, id, props)
+
+    const clientOrigin =
+      props.clientOrigin ??
+      (props.domainName ? `https://${props.domainName}` : 'http://localhost:5173')
 
     // --- Data layer ---
     // DESTROY is fine while there's no real data in these tables; revisit
@@ -126,7 +143,7 @@ export class ChatterStack extends Stack {
         // even before there's a real deployment. Swap in the CloudFront
         // domain once the client is deployed (roadmap step 7).
         allowCredentials: true,
-        allowOrigins: [props.clientOrigin ?? 'http://localhost:5173'],
+        allowOrigins: [clientOrigin],
       },
     })
 
@@ -339,7 +356,22 @@ export class ChatterStack extends Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     })
 
+    let zone: route53.IHostedZone | undefined
+    let certificate: acm.ICertificate | undefined
+    if (props.domainName) {
+      if (this.region !== 'us-east-1') {
+        throw new Error('A custom domain requires deploying to us-east-1 (CloudFront certificates must live there)')
+      }
+      zone = route53.HostedZone.fromLookup(this, 'Zone', { domainName: props.domainName })
+      certificate = new acm.Certificate(this, 'ClientCertificate', {
+        domainName: props.domainName,
+        validation: acm.CertificateValidation.fromDns(zone),
+      })
+    }
+
     const distribution = new cloudfront.Distribution(this, 'ClientDistribution', {
+      domainNames: props.domainName ? [props.domainName] : undefined,
+      certificate,
       defaultRootObject: 'index.html',
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(clientBucket),
@@ -354,6 +386,12 @@ export class ChatterStack extends Stack {
       ],
     })
 
+    if (zone && props.domainName) {
+      const target = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution))
+      new route53.ARecord(this, 'ClientAliasA', { zone, recordName: props.domainName, target })
+      new route53.AaaaRecord(this, 'ClientAliasAAAA', { zone, recordName: props.domainName, target })
+    }
+
     // --- Outputs ---
     // Consumed by the deploy workflow: build the client against the API
     // URLs, then sync it to the bucket and invalidate the distribution.
@@ -362,5 +400,6 @@ export class ChatterStack extends Stack {
     new CfnOutput(this, 'ClientBucketName', { value: clientBucket.bucketName })
     new CfnOutput(this, 'ClientDistributionId', { value: distribution.distributionId })
     new CfnOutput(this, 'ClientDistributionDomain', { value: distribution.distributionDomainName })
+    new CfnOutput(this, 'ClientUrl', { value: `https://${props.domainName ?? distribution.distributionDomainName}` })
   }
 }
